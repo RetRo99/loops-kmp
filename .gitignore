@@ -1,0 +1,12 @@
+.gradle/
+.build/
+build/
+**/build/
+.kotlin/
+local.properties
+.idea/
+*.iml
+.DS_Store
+xcuserdata/
+*.xcframework
+*.xcframework.zip
