@@ -126,6 +126,17 @@ class LoopsClient private constructor(
         ): LoopsClient = LoopsClient(LoopsConfig.Direct(apiKey, baseUrl), engine)
 
         /**
+         * Swift-friendly overload of [direct]. Kotlin default arguments do not bridge to
+         * Objective-C/Swift, so callers without these would be forced to supply an
+         * [HttpClientEngine] they cannot construct (the default factory is internal).
+         */
+        fun direct(apiKey: String): LoopsClient = direct(apiKey, LOOPS_BASE_URL)
+
+        /** Swift-friendly overload of [direct]. See [direct] above. */
+        fun direct(apiKey: String, baseUrl: String): LoopsClient =
+            direct(apiKey, baseUrl, httpClientEngine())
+
+        /**
          * Creates a client for **mobile / untrusted** use. Points at your own backend proxy
          * which holds the real Loops API key server-side. The Loops key is never present here.
          *
@@ -137,6 +148,13 @@ class LoopsClient private constructor(
             auth: ProxyAuth = ProxyAuth.None,
             engine: HttpClientEngine = httpClientEngine(),
         ): LoopsClient = LoopsClient(LoopsConfig.Proxy(proxyUrl, auth), engine)
+
+        /** Swift-friendly overload of [proxy]. See [direct] for why this exists. */
+        fun proxy(proxyUrl: String): LoopsClient = proxy(proxyUrl, ProxyAuth.None)
+
+        /** Swift-friendly overload of [proxy]. See [direct] for why this exists. */
+        fun proxy(proxyUrl: String, auth: ProxyAuth): LoopsClient =
+            proxy(proxyUrl, auth, httpClientEngine())
 
         private fun String.ensureTrailingSlash() = if (endsWith("/")) this else "$this/"
 
