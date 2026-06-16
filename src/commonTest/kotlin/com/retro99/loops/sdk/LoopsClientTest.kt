@@ -125,7 +125,7 @@ class LoopsClientTest {
     }
 
     @Test
-    fun `proxy - points at proxy host, never at app loops so`() = runTest {
+    fun `proxy - points at proxy host - never at app loops so`() = runTest {
         // Given
         var seenHost: String? = null
         val engine = MockEngine { request ->
