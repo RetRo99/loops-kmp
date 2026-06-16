@@ -1,0 +1,73 @@
+name: Release
+
+# Trigger by pushing a version tag, e.g.:  git tag 0.1.0 && git push origin 0.1.0
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # macOS runner is required to build the iOS XCFramework.
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so we can commit the updated Package.swift back to the default branch.
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Derive version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Build XCFramework
+        run: ./gradlew assembleLoopsSdkReleaseXCFramework
+
+      - name: Zip XCFramework
+        id: zip
+        run: |
+          FRAMEWORK_PATH="build/XCFrameworks/release/LoopsSdk.xcframework"
+          ZIP_NAME="LoopsSdk.xcframework.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$FRAMEWORK_PATH" "$ZIP_NAME"
+          CHECKSUM="$(swift package compute-checksum "$ZIP_NAME")"
+          echo "zip=$ZIP_NAME" >> "$GITHUB_OUTPUT"
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+
+      - name: Update Package.swift on the default branch
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CHECKSUM: ${{ steps.zip.outputs.checksum }}
+        run: |
+          DEFAULT_BRANCH="$(git remote show origin | sed -n 's/.*HEAD branch: //p')"
+          git checkout "$DEFAULT_BRANCH"
+
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${VERSION}/LoopsSdk.xcframework.zip"
+          sed -i '' -E "s|url: \".*\"|url: \"${URL}\"|" Package.swift
+          sed -i '' -E "s|checksum: \"[a-f0-9]*\"|checksum: \"${CHECKSUM}\"|" Package.swift
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Package.swift
+          git commit -m "Update Package.swift for ${VERSION}" || echo "No changes to commit"
+          git push origin "$DEFAULT_BRANCH"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          files: ${{ steps.zip.outputs.zip }}
+          generate_release_notes: true
