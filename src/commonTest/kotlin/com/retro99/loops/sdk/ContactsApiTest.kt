@@ -17,7 +17,6 @@ class ContactsApiTest {
 
     @Test
     fun `contacts find - parses contact list from response`() = runTest {
-        // Given
         val body = """[{"id":"c1","email":"a@b.com","firstName":"Alice"}]"""
         val engine = MockEngine { request ->
             respond(content = body, status = HttpStatusCode.OK, headers = jsonHeaders)
@@ -27,11 +26,7 @@ class ContactsApiTest {
             baseUrl = LoopsClient.LOOPS_BASE_URL,
             engine = engine,
         )
-
-        // When
         val result = classUnderTest.contacts.find(email = "a@b.com")
-
-        // Then
         assertEquals(1, result.size)
         assertEquals("c1", result[0].id)
         assertEquals("a@b.com", result[0].email)
@@ -40,7 +35,6 @@ class ContactsApiTest {
 
     @Test
     fun `contacts find - routes non-2xx through LoopsException Api`() = runTest {
-        // Given
         val engine = MockEngine {
             respond(
                 content = """{"success":false,"message":"Not found"}""",
@@ -53,8 +47,6 @@ class ContactsApiTest {
             baseUrl = LoopsClient.LOOPS_BASE_URL,
             engine = engine,
         )
-
-        // When / Then
         val error = assertFailsWith<LoopsException.Api> {
             classUnderTest.contacts.find(email = "missing@b.com")
         }
@@ -64,7 +56,6 @@ class ContactsApiTest {
 
     @Test
     fun `contacts find - wraps transport failure as Network error`() = runTest {
-        // Given
         val engine = MockEngine {
             throw RuntimeException("connection refused")
         }
@@ -73,8 +64,6 @@ class ContactsApiTest {
             baseUrl = LoopsClient.LOOPS_BASE_URL,
             engine = engine,
         )
-
-        // When / Then
         val error = assertFailsWith<LoopsException.Network> {
             classUnderTest.contacts.find(email = "a@b.com")
         }
