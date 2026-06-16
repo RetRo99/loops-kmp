@@ -1,5 +1,6 @@
 package com.retro99.loops.sdk
 
+import com.retro99.loops.sdk.api.ContactsApi
 import com.retro99.loops.sdk.ksp.JvmAsync
 import com.retro99.loops.sdk.model.ApiKeyResponse
 import io.ktor.client.HttpClient
@@ -81,12 +82,15 @@ class LoopsClient private constructor(
 
     private val http = LoopsHttp(client)
 
+    /** Contacts resource group. */
+    val contacts: ContactsApi = ContactsApi(http)
+
     /**
      * Tests the API key (GET /api-key). Returns the team the key belongs to,
      * or throws [LoopsException] if the key is invalid.
      */
     suspend fun testApiKey(): ApiKeyResponse =
-        http.execute { client.get("api-key").body() }
+        http.execute { get("api-key").body() }
 
     /**
      * Scope for generated JVM `*Async` wrappers (see [JvmAsync]). Tied to this client's
