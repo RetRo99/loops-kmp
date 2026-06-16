@@ -1,5 +1,6 @@
 package com.retro99.loops.sdk
 
+import com.retro99.loops.sdk.api.ContactPropertiesApi
 import com.retro99.loops.sdk.api.ContactsApi
 import com.retro99.loops.sdk.ksp.JvmAsync
 import com.retro99.loops.sdk.model.ApiKeyResponse
@@ -51,6 +52,9 @@ class LoopsClient private constructor(
     // region Resources
     /** Contacts resource group. */
     val contacts: ContactsApi = ContactsApi(http)
+
+    /** Contact Properties resource group. */
+    val contactProperties: ContactPropertiesApi = ContactPropertiesApi(http)
 
     /**
      * Tests the API key (GET /api-key). Returns the team the key belongs to,
