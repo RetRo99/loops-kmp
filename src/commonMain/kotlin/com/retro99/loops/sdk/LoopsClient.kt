@@ -5,6 +5,7 @@ import com.retro99.loops.sdk.api.ComponentsApi
 import com.retro99.loops.sdk.api.ContactPropertiesApi
 import com.retro99.loops.sdk.api.ContactsApi
 import com.retro99.loops.sdk.api.EventsApi
+import com.retro99.loops.sdk.api.IpPoolsApi
 import com.retro99.loops.sdk.api.MailingListsApi
 import com.retro99.loops.sdk.api.MessagesApi
 import com.retro99.loops.sdk.api.ThemesApi
@@ -83,6 +84,9 @@ class LoopsClient private constructor(
 
     /** Components resource group. */
     val components: ComponentsApi = ComponentsApi(http)
+
+    /** Dedicated Sending IP Pools resource group. */
+    val ipPools: IpPoolsApi = IpPoolsApi(http)
 
     /**
      * Tests the API key (GET /api-key). Returns the team the key belongs to,
