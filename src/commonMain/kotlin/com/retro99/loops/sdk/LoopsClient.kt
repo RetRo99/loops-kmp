@@ -45,6 +45,15 @@ class LoopsClient private constructor(
     private val config: LoopsConfig,
     engine: HttpClientEngine,
 ) {
+    constructor(apiKey: String) :
+        this(LoopsConfig.Direct(apiKey, LOOPS_BASE_URL), httpClientEngine())
+
+    constructor(apiKey: String, baseUrl: String) :
+        this(LoopsConfig.Direct(apiKey, baseUrl), httpClientEngine())
+
+    constructor(proxyUrl: String, auth: ProxyAuth) :
+        this(LoopsConfig.Proxy(proxyUrl, auth), httpClientEngine())
+
     private val client: HttpClient = HttpClient(engine) {
         expectSuccess = true
         install(ContentNegotiation) {

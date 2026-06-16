@@ -10,7 +10,28 @@ permissions:
   contents: write
 
 jobs:
+  # The release job moves the tag onto its own "Update Package.swift" commit (so SPM
+  # reads a matching checksum). That force-push re-triggers this workflow; this guard
+  # detects the bot commit and stops the re-run, preventing an infinite loop.
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          MSG="$(git log -1 --pretty=%s)"
+          if echo "$MSG" | grep -q "^Update Package.swift for "; then
+            echo "Tag points at the bot's Package.swift commit; skipping re-run."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
   release:
+    needs: guard
+    if: needs.guard.outputs.skip != 'true'
     # macOS runner is required to build the iOS XCFramework.
     runs-on: macos-14
     steps:
@@ -54,7 +75,15 @@ jobs:
           echo "zip=$ZIP_NAME" >> "$GITHUB_OUTPUT"
           echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
 
-      - name: Update Package.swift on the default branch
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          files: ${{ steps.zip.outputs.zip }}
+          generate_release_notes: true
+
+      - name: Update Package.swift and move tag to the updated commit
         env:
           VERSION: ${{ steps.version.outputs.version }}
           CHECKSUM: ${{ steps.zip.outputs.checksum }}
@@ -72,10 +101,7 @@ jobs:
           git commit -m "Update Package.swift for ${VERSION}" || echo "No changes to commit"
           git push origin "$DEFAULT_BRANCH"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: ${{ steps.version.outputs.version }}
-          files: ${{ steps.zip.outputs.zip }}
-          generate_release_notes: true
+          # SPM reads Package.swift at the tagged commit, so the tag must point at the
+          # commit that now carries the matching url + checksum. Move it there.
+          git tag -f "${VERSION}" "${DEFAULT_BRANCH}"
+          git push --force origin "${VERSION}"
