@@ -119,42 +119,35 @@ class LoopsClient private constructor(
          * @param apiKey Your Loops account API key.
          * @param baseUrl Override only for Loops staging or EU data-residency endpoints.
          */
-        fun direct(
-            apiKey: String,
-            baseUrl: String = LOOPS_BASE_URL,
-            engine: HttpClientEngine = httpClientEngine(),
-        ): LoopsClient = LoopsClient(LoopsConfig.Direct(apiKey, baseUrl), engine)
-
-        /**
-         * Swift-friendly overload of [direct]. Kotlin default arguments do not bridge to
-         * Objective-C/Swift, so callers without these would be forced to supply an
-         * [HttpClientEngine] they cannot construct (the default factory is internal).
-         */
         fun direct(apiKey: String): LoopsClient = direct(apiKey, LOOPS_BASE_URL)
 
-        /** Swift-friendly overload of [direct]. See [direct] above. */
         fun direct(apiKey: String, baseUrl: String): LoopsClient =
             direct(apiKey, baseUrl, httpClientEngine())
+
+        fun direct(
+            apiKey: String,
+            baseUrl: String,
+            engine: HttpClientEngine,
+        ): LoopsClient = LoopsClient(LoopsConfig.Direct(apiKey, baseUrl), engine)
 
         /**
          * Creates a client for **mobile / untrusted** use. Points at your own backend proxy
          * which holds the real Loops API key server-side. The Loops key is never present here.
          *
          * @param proxyUrl Base URL of your backend proxy (e.g. `"https://your-api.com/loops/"`).
-         * @param auth How to authenticate the app to your proxy. Defaults to [ProxyAuth.None].
+         * @param auth How to authenticate the app to your proxy. The single-argument
+         *   overload uses [ProxyAuth.None].
          */
-        fun proxy(
-            proxyUrl: String,
-            auth: ProxyAuth = ProxyAuth.None,
-            engine: HttpClientEngine = httpClientEngine(),
-        ): LoopsClient = LoopsClient(LoopsConfig.Proxy(proxyUrl, auth), engine)
-
-        /** Swift-friendly overload of [proxy]. See [direct] for why this exists. */
         fun proxy(proxyUrl: String): LoopsClient = proxy(proxyUrl, ProxyAuth.None)
 
-        /** Swift-friendly overload of [proxy]. See [direct] for why this exists. */
         fun proxy(proxyUrl: String, auth: ProxyAuth): LoopsClient =
             proxy(proxyUrl, auth, httpClientEngine())
+
+        fun proxy(
+            proxyUrl: String,
+            auth: ProxyAuth,
+            engine: HttpClientEngine,
+        ): LoopsClient = LoopsClient(LoopsConfig.Proxy(proxyUrl, auth), engine)
 
         private fun String.ensureTrailingSlash() = if (endsWith("/")) this else "$this/"
 

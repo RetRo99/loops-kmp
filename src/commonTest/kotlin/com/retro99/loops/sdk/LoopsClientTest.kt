@@ -33,7 +33,11 @@ class LoopsClientTest {
                 headers = jsonHeaders,
             )
         }
-        val classUnderTest = LoopsClient.direct(apiKey = "test-key", engine = engine)
+        val classUnderTest = LoopsClient.direct(
+            apiKey = "test-key",
+            baseUrl = LoopsClient.LOOPS_BASE_URL,
+            engine = engine,
+        )
 
         // When
         val result = classUnderTest.testApiKey()
@@ -55,7 +59,11 @@ class LoopsClientTest {
                 headers = jsonHeaders,
             )
         }
-        val classUnderTest = LoopsClient.direct(apiKey = "bad", engine = engine)
+        val classUnderTest = LoopsClient.direct(
+            apiKey = "bad",
+            baseUrl = LoopsClient.LOOPS_BASE_URL,
+            engine = engine,
+        )
 
         // When / Then
         val error = assertFailsWith<LoopsException.Api> {
@@ -71,7 +79,11 @@ class LoopsClientTest {
         val engine = MockEngine {
             throw RuntimeException("connection reset")
         }
-        val classUnderTest = LoopsClient.direct(apiKey = "k", engine = engine)
+        val classUnderTest = LoopsClient.direct(
+            apiKey = "k",
+            baseUrl = LoopsClient.LOOPS_BASE_URL,
+            engine = engine,
+        )
 
         // When / Then
         val error = assertFailsWith<LoopsException.Network> {
@@ -134,6 +146,7 @@ class LoopsClientTest {
         }
         val classUnderTest = LoopsClient.proxy(
             proxyUrl = "https://my-backend.com/loops/",
+            auth = ProxyAuth.None,
             engine = engine,
         )
 
