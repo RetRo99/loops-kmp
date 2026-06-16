@@ -1,3 +1,4 @@
+import com.vanniktech.maven.publish.SonatypeHost
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
@@ -5,12 +6,10 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.android.kotlin.multiplatform.library)
-    `maven-publish`
+    alias(libs.plugins.maven.publish)
 }
 
-// JitPack derives the consumer group from com.github.<user> regardless of this value;
-// it is kept here for local/maven-local publishing consistency.
-group = "com.github.retro99"
+group = "io.github.retro99"
 version = "0.1.0"
 
 kotlin {
@@ -56,6 +55,48 @@ kotlin {
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+        }
+    }
+}
+
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, automaticRelease = true)
+
+    // Sign only when a key is configured (CI release). Allows unsigned local/maven-local builds.
+    if (providers.gradleProperty("signingInMemoryKey").isPresent ||
+        providers.environmentVariable("ORG_GRADLE_PROJECT_signingInMemoryKey").isPresent
+    ) {
+        signAllPublications()
+    }
+
+    coordinates(group.toString(), "loops-kmp", version.toString())
+
+    pom {
+        name.set("loops-kmp")
+        description.set("Kotlin Multiplatform client for the loops.so API (Android + iOS).")
+        inceptionYear.set("2026")
+        url.set("https://github.com/retro99/loops-kmp")
+
+        licenses {
+            license {
+                name.set("GNU General Public License v3.0")
+                url.set("https://www.gnu.org/licenses/gpl-3.0.txt")
+                distribution.set("https://www.gnu.org/licenses/gpl-3.0.txt")
+            }
+        }
+
+        developers {
+            developer {
+                id.set("retro99")
+                name.set("Rok Retar")
+                url.set("https://github.com/retro99")
+            }
+        }
+
+        scm {
+            url.set("https://github.com/retro99/loops-kmp")
+            connection.set("scm:git:git://github.com/retro99/loops-kmp.git")
+            developerConnection.set("scm:git:ssh://git@github.com/retro99/loops-kmp.git")
         }
     }
 }

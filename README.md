@@ -1,7 +1,7 @@
 # loops-kmp
 
 A Kotlin Multiplatform client for the [loops.so](https://loops.so) API.
-Targets **Android** and **iOS**, distributable to Kotlin consumers via **JitPack** and to
+Targets **Android** and **iOS**, distributable to Kotlin consumers via **Maven Central** and to
 Swift consumers via **Swift Package Manager**.
 
 ## Features
@@ -17,7 +17,7 @@ Swift consumers via **Swift Package Manager**.
 > More endpoints (contacts, transactional emails, events) are planned. No third-party
 > (Ktor, kotlinx.serialization) exceptions are exposed to consumers.
 
-## Add to a Kotlin / Android / KMP project (JitPack)
+## Add to a Kotlin / Android / KMP project (Maven Central)
 
 `settings.gradle.kts`:
 
@@ -25,7 +25,6 @@ Swift consumers via **Swift Package Manager**.
 dependencyResolutionManagement {
     repositories {
         mavenCentral()
-        maven { url = uri("https://jitpack.io") }
     }
 }
 ```
@@ -34,11 +33,12 @@ Module `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("com.github.retro99:loops-kmp:0.1.0")
+    implementation("io.github.retro99:loops-kmp:0.1.0")
 }
 ```
 
-> The version is any git tag (e.g. `0.1.0`) or commit hash. JitPack builds it on first request.
+> For a KMP module, add it to `commonMain`; Gradle resolves the correct Android/iOS
+> variant per target automatically.
 
 ## Add to an iOS / Swift project (Swift Package Manager)
 
@@ -75,7 +75,8 @@ try {
 
 ## Releasing
 
-Tag and push — the `Release` GitHub Action builds the XCFramework, attaches it to a
+Tag and push — the `Release` GitHub Action (on a macOS runner) publishes the full
+multiplatform artifact to Maven Central, builds the iOS XCFramework, attaches it to a
 GitHub Release, and updates `Package.swift`:
 
 ```bash
@@ -83,7 +84,12 @@ git tag 0.1.0
 git push origin 0.1.0
 ```
 
-JitPack needs nothing extra; it builds the Kotlin artifact on demand from the same tag.
+Requires these repository secrets: `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`,
+`SIGNING_KEY` (ASCII-armored GPG private key), `SIGNING_KEY_PASSWORD`.
+
+## License
+
+Licensed under the [GNU General Public License v3.0](LICENSE).
 
 ## Building locally
 
