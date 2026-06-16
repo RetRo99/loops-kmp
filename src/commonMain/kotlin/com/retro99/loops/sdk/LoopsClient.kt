@@ -6,14 +6,7 @@ import com.retro99.loops.sdk.model.ApiKeyResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
-import io.ktor.client.plugins.api.createClientPlugin
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
 
 /**
  * Kotlin Multiplatform client for the loops.so API (https://loops.so/docs/api-reference).
@@ -38,6 +31,7 @@ class LoopsClient private constructor(
     private val config: LoopsConfig,
     engine: HttpClientEngine,
 ) {
+    // region Constructors
     constructor(apiKey: String) :
         this(LoopsConfig.Direct(apiKey, LOOPS_BASE_URL), httpClientEngine())
 
@@ -46,39 +40,15 @@ class LoopsClient private constructor(
 
     constructor(proxyUrl: String, auth: ProxyAuth) :
         this(LoopsConfig.Proxy(proxyUrl, auth), httpClientEngine())
+    // endregion
 
-    private val client: HttpClient = HttpClient(engine) {
-        expectSuccess = true
-        install(ContentNegotiation) {
-            json(json)
-        }
-        defaultRequest {
-            // Ktor resolves relative paths against the base only when it ends with '/'.
-            url(config.baseUrl.ensureTrailingSlash())
-            contentType(ContentType.Application.Json)
-            if (config is LoopsConfig.Direct) {
-                bearerAuth(config.apiKey)
-            }
-        }
-        if (config is LoopsConfig.Proxy) {
-            install(createClientPlugin("LoopsProxyAuth") {
-                onRequest { request, _ ->
-                    when (val auth = config.auth) {
-                        ProxyAuth.None -> {}
-                        is ProxyAuth.BearerToken -> auth.token()?.let { request.bearerAuth(it) }
-                        is ProxyAuth.Headers -> auth.headers().forEach { (key, value) ->
-                            request.headers.append(key, value)
-                        }
-                    }
-                }
-            })
-        }
-    }
+    private val client: HttpClient = loopsHttpClient(config, engine)
 
     // Internal (not private) so the KSP-generated `LoopsClientAsync` wrappers, which live in
     // this package as top-level extensions, can reach `http.asyncScope`.
     internal val http = LoopsHttp(client)
 
+    // region Resources
     /** Contacts resource group. */
     val contacts: ContactsApi = ContactsApi(http)
 
@@ -88,6 +58,7 @@ class LoopsClient private constructor(
      */
     suspend fun testApiKey(): ApiKeyResponse =
         http.execute { get("api-key").body() }
+    // endregion
 
     fun close() {
         http.close()
@@ -97,6 +68,7 @@ class LoopsClient private constructor(
         /** The Loops production API base URL. Pass as [direct]'s `baseUrl` only for staging / EU residency overrides. */
         const val LOOPS_BASE_URL: String = "https://app.loops.so/api/v1/"
 
+        // region Direct (trusted) factories
         /**
          * Creates a client for **server-side / trusted** use. Holds the Loops API key and
          * talks to Loops directly. Never use this in a mobile app — the key would be
@@ -115,7 +87,9 @@ class LoopsClient private constructor(
             baseUrl: String,
             engine: HttpClientEngine,
         ): LoopsClient = LoopsClient(LoopsConfig.Direct(apiKey, baseUrl), engine)
+        // endregion
 
+        // region Proxy (untrusted) factories
         /**
          * Creates a client for **mobile / untrusted** use. Points at your own backend proxy
          * which holds the real Loops API key server-side. The Loops key is never present here.
@@ -134,9 +108,6 @@ class LoopsClient private constructor(
             auth: ProxyAuth,
             engine: HttpClientEngine,
         ): LoopsClient = LoopsClient(LoopsConfig.Proxy(proxyUrl, auth), engine)
-
-        private fun String.ensureTrailingSlash() = if (endsWith("/")) this else "$this/"
-
-        private val json = sdkJson
+        // endregion
     }
 }
