@@ -13,7 +13,7 @@ group = "io.github.retro99"
 version = "0.1.0"
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "com.retro99.loops.sdk"
         compileSdk = libs.versions.androidCompileSdk.get().toInt()
         minSdk = libs.versions.androidMinSdk.get().toInt()
@@ -23,6 +23,8 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_17)
         }
     }
+
+    jvm()
 
     val xcf = XCFramework("LoopsSdk")
     listOf(
@@ -56,6 +58,9 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
+        jvmMain.dependencies {
+            implementation(libs.ktor.client.cio)
+        }
     }
 }
 
@@ -73,7 +78,7 @@ mavenPublishing {
 
     pom {
         name.set("loops-kmp")
-        description.set("Kotlin Multiplatform client for the loops.so API (Android + iOS).")
+        description.set("Kotlin Multiplatform client for the loops.so API (Android, iOS, JVM).")
         inceptionYear.set("2026")
         url.set("https://github.com/retro99/loops-kmp")
 
