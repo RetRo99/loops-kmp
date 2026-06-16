@@ -1,10 +1,11 @@
 [versions]
-kotlin = "2.4.0"
+kotlin = "2.3.21"
 ktor = "3.5.0"
 coroutines = "1.11.0"
 agp = "9.2.1"
 mavenPublish = "0.30.0"
 ksp = "2.3.9"
+skie = "0.10.12"
 androidCompileSdk = "34"
 androidMinSdk = "24"
 
@@ -28,3 +29,4 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+skie = { id = "co.touchlab.skie", version.ref = "skie" }

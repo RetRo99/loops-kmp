@@ -8,10 +8,11 @@ plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.maven.publish)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.skie)
 }
 
 group = "io.github.retro99"
-version = "0.1.1"
+version = "0.1.2"
 
 kotlin {
     android {
