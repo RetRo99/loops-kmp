@@ -14,11 +14,6 @@ import io.ktor.client.request.get
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.serialization.json.Json
 
 /**
  * Kotlin Multiplatform client for the loops.so API (https://loops.so/docs/api-reference).
@@ -80,7 +75,9 @@ class LoopsClient private constructor(
         }
     }
 
-    private val http = LoopsHttp(client)
+    // Internal (not private) so the KSP-generated `LoopsClientAsync` wrappers, which live in
+    // this package as top-level extensions, can reach `http.asyncScope`.
+    internal val http = LoopsHttp(client)
 
     /** Contacts resource group. */
     val contacts: ContactsApi = ContactsApi(http)
@@ -92,17 +89,8 @@ class LoopsClient private constructor(
     suspend fun testApiKey(): ApiKeyResponse =
         http.execute { get("api-key").body() }
 
-    /**
-     * Scope for generated JVM `*Async` wrappers (see [JvmAsync]). Tied to this client's
-     * lifecycle so [close] cancels any in-flight async work. Unused on platforms without
-     * the JVM `CompletableFuture` wrappers.
-     */
-    internal val asyncScope: CoroutineScope =
-        CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
     fun close() {
-        asyncScope.cancel()
-        client.close()
+        http.close()
     }
 
     companion object {
@@ -149,11 +137,6 @@ class LoopsClient private constructor(
 
         private fun String.ensureTrailingSlash() = if (endsWith("/")) this else "$this/"
 
-        private val json = Json {
-            ignoreUnknownKeys = true
-            isLenient = true
-            encodeDefaults = false
-            explicitNulls = false
-        }
+        private val json = sdkJson
     }
 }

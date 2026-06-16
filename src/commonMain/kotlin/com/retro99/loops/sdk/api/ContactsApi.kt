@@ -1,6 +1,7 @@
 package com.retro99.loops.sdk.api
 
 import com.retro99.loops.sdk.LoopsHttp
+import com.retro99.loops.sdk.ksp.JvmAsync
 import com.retro99.loops.sdk.model.Contact
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -14,7 +15,12 @@ import io.ktor.client.request.parameter
  * val contacts = client.contacts.find(email = "a@b.com")
  * ```
  */
-class ContactsApi internal constructor(private val http: LoopsHttp) {
+@JvmAsync
+class ContactsApi internal constructor(
+    // Internal (not private) so the KSP-generated `ContactsApiAsync` wrappers, top-level
+    // extensions in this package, can reach `http.asyncScope`.
+    internal val http: LoopsHttp,
+) {
 
     /**
      * Find a contact by [email] or [userId]. Only one identifier should be provided.

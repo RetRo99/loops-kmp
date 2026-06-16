@@ -188,8 +188,10 @@ class JvmAsyncProcessor(
                         "fun $className.${funcName}Async($paramStr): " +
                             "CompletableFuture<$returnTypeStr> ="
                     )
+                    // The async scope is owned by LoopsHttp and reached via the `http` property,
+                    // shared by LoopsClient and every sub-API (see LoopsHttp.asyncScope).
                     appendLine(
-                        "    asyncScope.future { $funcName($argStr) }"
+                        "    http.asyncScope.future { $funcName($argStr) }"
                     )
                     appendLine()
                 }
