@@ -14,8 +14,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "LoopsSdk",
-            url: "https://github.com/retro99/loops-kmp/releases/download/0.0.0/LoopsSdk.xcframework.zip",
-            checksum: "0000000000000000000000000000000000000000000000000000000000000000"
+            url: "https://github.com/RetRo99/loops-kmp/releases/download/0.0.1/LoopsSdk.xcframework.zip",
+            checksum: "9abfcb41171417139898489562c09ee402c41a52d2c1d7c696ea8a15e714ef5f"
         ),
     ]
 )
