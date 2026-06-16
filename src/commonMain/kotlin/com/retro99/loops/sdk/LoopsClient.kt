@@ -5,13 +5,11 @@ import com.retro99.loops.sdk.model.ApiKeyResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
-import io.ktor.client.plugins.ResponseException
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
@@ -19,7 +17,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 /**
@@ -82,12 +79,14 @@ class LoopsClient private constructor(
         }
     }
 
+    private val http = LoopsHttp(client)
+
     /**
      * Tests the API key (GET /api-key). Returns the team the key belongs to,
      * or throws [LoopsException] if the key is invalid.
      */
     suspend fun testApiKey(): ApiKeyResponse =
-        request { client.get("api-key").body() }
+        http.execute { client.get("api-key").body() }
 
     /**
      * Scope for generated JVM `*Async` wrappers (see [JvmAsync]). Tied to this client's
@@ -101,20 +100,6 @@ class LoopsClient private constructor(
         asyncScope.cancel()
         client.close()
     }
-
-    private suspend inline fun <T> request(block: () -> T): T =
-        try {
-            block()
-        } catch (exception: ResponseException) {
-            throw LoopsException.Api(
-                statusCode = exception.response.status.value,
-                body = exception.response.bodyAsText(),
-            )
-        } catch (exception: SerializationException) {
-            throw LoopsException.Serialization(exception)
-        } catch (exception: Exception) {
-            throw LoopsException.Network(exception)
-        }
 
     companion object {
         /** The Loops production API base URL. Pass as [direct]'s `baseUrl` only for staging / EU residency overrides. */
