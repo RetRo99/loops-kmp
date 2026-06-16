@@ -3,8 +3,11 @@ package com.retro99.loops.sdk.api
 import com.retro99.loops.sdk.LoopsHttp
 import com.retro99.loops.sdk.ksp.JvmAsync
 import com.retro99.loops.sdk.model.Contact
+import com.retro99.loops.sdk.model.ContactIdentifier
 import com.retro99.loops.sdk.model.ContactWriteResponse
 import com.retro99.loops.sdk.model.CreateContactRequest
+import com.retro99.loops.sdk.model.DeleteContactRequest
+import com.retro99.loops.sdk.model.DeleteResponse
 import com.retro99.loops.sdk.model.UpdateContactRequest
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -18,7 +21,7 @@ import io.ktor.client.request.setBody
  *
  * Accessed via [LoopsClient.contacts]:
  * ```kotlin
- * val contacts = client.contacts.find(email = "a@b.com")
+ * val contacts = client.contacts.find(ContactIdentifier.ByEmail("a@b.com"))
  * ```
  */
 @JvmAsync
@@ -29,16 +32,15 @@ class ContactsApi internal constructor(
 ) {
 
     /**
-     * Find a contact by [email] or [userId]. Only one identifier should be provided.
+     * Find a contact by [identifier].
      */
-    suspend fun find(
-        email: String? = null,
-        userId: String? = null,
-    ): List<Contact> =
+    suspend fun find(identifier: ContactIdentifier): List<Contact> =
         http.execute {
             get("contacts/find") {
-                email?.let { parameter("email", it) }
-                userId?.let { parameter("userId", it) }
+                when (identifier) {
+                    is ContactIdentifier.ByEmail -> parameter("email", identifier.email)
+                    is ContactIdentifier.ByUserId -> parameter("userId", identifier.userId)
+                }
             }.body()
         }
 
@@ -63,6 +65,21 @@ class ContactsApi internal constructor(
         http.execute {
             put("contacts/update") {
                 setBody(request)
+            }.body()
+        }
+
+    /**
+     * Delete a contact identified by [identifier].
+     */
+    suspend fun delete(identifier: ContactIdentifier): DeleteResponse =
+        http.execute {
+            post("contacts/delete") {
+                setBody(
+                    when (identifier) {
+                        is ContactIdentifier.ByEmail -> DeleteContactRequest(email = identifier.email)
+                        is ContactIdentifier.ByUserId -> DeleteContactRequest(userId = identifier.userId)
+                    },
+                )
             }.body()
         }
 }
