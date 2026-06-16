@@ -159,6 +159,7 @@ class LoopsValueTest {
                 is LoopsValue.BooleanValue -> assertEquals(
                     value.value, (recovered as LoopsValue.BooleanValue).value,
                 )
+                else -> assertEquals(value, recovered)
             }
         }
     }
@@ -226,5 +227,64 @@ class LoopsValueTest {
         assertEquals("premium,beta", (extracted["tags"] as LoopsValue.StringValue).value)
         assertIs<LoopsValue.BooleanValue>(extracted["active"])
         assertEquals(false, (extracted["active"] as LoopsValue.BooleanValue).value)
+    }
+
+    // ── null / list / object cases (official types: contact props allow null;
+    //    transactional dataVariables allow Array<Record<string, string|number>>) ──
+
+    @Test
+    fun `LoopsValue NullValue round-trips through JSON null`() {
+        val encoded = json.encodeToString(LoopsValueSerializer, LoopsValue.NullValue)
+        assertEquals("null", encoded)
+        val decoded = json.decodeFromString(LoopsValueSerializer, "null")
+        assertEquals(LoopsValue.NullValue, decoded)
+    }
+
+    @Test
+    fun `LoopsValue decodes a JSON array into ListValue instead of throwing`() {
+        val decoded = json.decodeFromString(LoopsValueSerializer, """["a", 1, true]""")
+        assertIs<LoopsValue.ListValue>(decoded)
+        assertEquals(3, decoded.value.size)
+        assertEquals(LoopsValue.StringValue("a"), decoded.value[0])
+        assertEquals(LoopsValue.NumberValue(1.0), decoded.value[1])
+        assertEquals(LoopsValue.BooleanValue(true), decoded.value[2])
+    }
+
+    @Test
+    fun `LoopsValue decodes a JSON object into ObjectValue instead of throwing`() {
+        val decoded = json.decodeFromString(LoopsValueSerializer, """{"k":"v","n":7}""")
+        assertIs<LoopsValue.ObjectValue>(decoded)
+        assertEquals(LoopsValue.StringValue("v"), decoded.value["k"])
+        assertEquals(LoopsValue.NumberValue(7.0), decoded.value["n"])
+    }
+
+    @Test
+    fun `dataVariables array-of-objects shape round-trips losslessly`() {
+        // Mirrors the official TransactionalVariables type:
+        // Record<string, string | number | Array<Record<string, string | number>>>
+        val items = LoopsValue.of(
+            listOf(
+                LoopsValue.of(mapOf("name" to LoopsValue.of("Widget"), "qty" to LoopsValue.of(2))),
+                LoopsValue.of(mapOf("name" to LoopsValue.of("Gadget"), "qty" to LoopsValue.of(1))),
+            ),
+        )
+        val encoded = json.encodeToString(LoopsValueSerializer, items)
+        val decoded = json.decodeFromString(LoopsValueSerializer, encoded)
+        assertEquals(items, decoded)
+    }
+
+    @Test
+    fun `nested null inside list and object is preserved`() {
+        val value = LoopsValue.of(
+            mapOf(
+                "maybe" to LoopsValue.NullValue,
+                "items" to LoopsValue.of(listOf(LoopsValue.NullValue, LoopsValue.of("x"))),
+            ),
+        )
+        val decoded = json.decodeFromString(
+            LoopsValueSerializer,
+            json.encodeToString(LoopsValueSerializer, value),
+        )
+        assertEquals(value, decoded)
     }
 }
