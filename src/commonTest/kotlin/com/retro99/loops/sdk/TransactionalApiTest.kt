@@ -90,6 +90,33 @@ class TransactionalApiTest {
     }
 
     @Test
+    fun `transactional list - sends GET with pagination params and parses Page envelope`() = runTest {
+        var seenMethod: HttpMethod? = null
+        var seenPath: String? = null
+        var seenPerPage: String? = null
+        var seenCursor: String? = null
+        val body = """{"pagination":{"totalResults":5,"perPage":2,"totalPages":3},"data":[{"id":"tm-1","recipient":"a@b.com","status":"sent","sentAt":"2024-01-01T00:00:00Z"},{"id":"tm-2","recipient":"c@d.com","status":"opened","openedAt":"2024-01-02T00:00:00Z"}]}"""
+        val engine = MockEngine { request ->
+            seenMethod = request.method
+            seenPath = request.url.encodedPath
+            seenPerPage = request.url.parameters["perPage"]
+            seenCursor = request.url.parameters["cursor"]
+            respond(content = body, status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+        val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
+        val result = classUnderTest.transactional.list(perPage = 2, cursor = "abc")
+        assertEquals(HttpMethod.Get, seenMethod)
+        assertEquals("/api/v1/transactional", seenPath)
+        assertEquals("2", seenPerPage)
+        assertEquals("abc", seenCursor)
+        assertEquals(5, result.pagination.totalResults)
+        assertEquals(2, result.data.size)
+        assertEquals("tm-1", result.data[0].id)
+        assertEquals("a@b.com", result.data[0].recipient)
+        assertEquals("sent", result.data[0].status)
+    }
+
+    @Test
     fun `transactional send - non-2xx throws LoopsException Api`() = runTest {
         val engine = MockEngine {
             respond(

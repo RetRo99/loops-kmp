@@ -2,10 +2,14 @@ package com.retro99.loops.sdk.api
 
 import com.retro99.loops.sdk.LoopsHttp
 import com.retro99.loops.sdk.ksp.JvmAsync
+import com.retro99.loops.sdk.model.Page
 import com.retro99.loops.sdk.model.SuccessResponse
+import com.retro99.loops.sdk.model.TransactionalMessage
 import com.retro99.loops.sdk.model.TransactionalSendRequest
 import io.ktor.client.call.body
+import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 
@@ -26,6 +30,20 @@ class TransactionalApi internal constructor(
      * Send a transactional email. Optionally provide an [idempotencyKey] (≤100 chars) to
      * prevent duplicate sends — the header `Idempotency-Key` is set only when non-null.
      */
+    /**
+     * List transactional email messages with optional pagination.
+     */
+    suspend fun list(
+        perPage: Int? = null,
+        cursor: String? = null,
+    ): Page<TransactionalMessage> =
+        http.execute {
+            get("transactional") {
+                perPage?.let { parameter("perPage", it) }
+                cursor?.let { parameter("cursor", it) }
+            }.body()
+        }
+
     suspend fun send(
         request: TransactionalSendRequest,
         idempotencyKey: String? = null,
