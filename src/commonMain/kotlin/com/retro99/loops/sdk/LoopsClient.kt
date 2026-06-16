@@ -1,8 +1,10 @@
 package com.retro99.loops.sdk
 
+import com.retro99.loops.sdk.api.CampaignsApi
 import com.retro99.loops.sdk.api.ContactPropertiesApi
 import com.retro99.loops.sdk.api.ContactsApi
 import com.retro99.loops.sdk.api.EventsApi
+import com.retro99.loops.sdk.api.MailingListsApi
 import com.retro99.loops.sdk.api.TransactionalApi
 import com.retro99.loops.sdk.ksp.JvmAsync
 import com.retro99.loops.sdk.model.ApiKeyResponse
@@ -63,6 +65,12 @@ class LoopsClient private constructor(
 
     /** Transactional Emails resource group. */
     val transactional: TransactionalApi = TransactionalApi(http)
+
+    /** Mailing Lists resource group. */
+    val lists: MailingListsApi = MailingListsApi(http)
+
+    /** Campaigns resource group. */
+    val campaigns: CampaignsApi = CampaignsApi(http)
 
     /**
      * Tests the API key (GET /api-key). Returns the team the key belongs to,
