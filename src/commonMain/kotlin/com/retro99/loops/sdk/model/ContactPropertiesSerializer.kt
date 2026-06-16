@@ -18,7 +18,11 @@ internal object ContactPropertiesSerializer {
     fun merge(known: JsonObject, custom: Map<String, LoopsValue>, json: Json): JsonObject {
         if (custom.isEmpty()) return known
         val customObject = json.encodeToJsonElement(mapSerializer, custom).jsonObject
-        return JsonObject(known.toMap() + customObject)
+        // Known fields are authoritative and stay first: drop any custom key that collides with
+        // a typed field so it can't emit a clobbered value that `extract` then drops on the way
+        // back (which would break round-trips). Known fields keep their declaration order.
+        val knownMap = known.toMap()
+        return JsonObject(knownMap + customObject.filterKeys { it !in knownMap })
     }
 
     fun extract(

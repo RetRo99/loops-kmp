@@ -9,12 +9,9 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonEncoder
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.put
 
 @Serializable(with = CreateContactRequestSerializer::class)
 data class CreateContactRequest(
@@ -30,10 +27,14 @@ data class CreateContactRequest(
 
 internal object CreateContactRequestSerializer : KSerializer<CreateContactRequest> {
 
-    private val knownKeys = setOf(
-        "email", "firstName", "lastName", "subscribed",
-        "userGroup", "userId", "mailingLists",
-    )
+    // Derived from the known-fields descriptor so it can never drift from the actual fields:
+    // every key here is a known field, so `deserialize` collects only the rest as custom props.
+    private val knownKeys: Set<String> =
+        CreateContactKnownFields.serializer().descriptor.let { descriptor ->
+            (0 until descriptor.elementsCount)
+                .map { descriptor.getElementName(it) }
+                .toSet()
+        }
 
     override val descriptor: SerialDescriptor =
         buildClassSerialDescriptor("CreateContactRequest")
@@ -41,17 +42,11 @@ internal object CreateContactRequestSerializer : KSerializer<CreateContactReques
     override fun serialize(encoder: Encoder, value: CreateContactRequest) {
         val jsonEncoder = encoder as? JsonEncoder
             ?: error("CreateContactRequest can only be serialized with JSON")
-        val known = buildJsonObject {
-            put("email", value.email)
-            value.firstName?.let { put("firstName", it) }
-            value.lastName?.let { put("lastName", it) }
-            value.subscribed?.let { put("subscribed", it) }
-            value.userGroup?.let { put("userGroup", it) }
-            value.userId?.let { put("userId", it) }
-            value.mailingLists?.let {
-                put("mailingLists", jsonEncoder.json.encodeToJsonElement(it))
-            }
-        }
+        // Let the typed known-fields model emit the base object (nulls dropped via
+        // explicitNulls=false), then flatten the custom properties as top-level siblings.
+        val known = jsonEncoder.json
+            .encodeToJsonElement(CreateContactKnownFields.serializer(), value.toKnownFields())
+            .jsonObject
         val merged = ContactPropertiesSerializer.merge(
             known, value.customProperties, jsonEncoder.json,
         )
@@ -64,17 +59,31 @@ internal object CreateContactRequestSerializer : KSerializer<CreateContactReques
         val root = jsonDecoder.decodeJsonElement().jsonObject
         val known = jsonDecoder.json.decodeFromJsonElement<CreateContactKnownFields>(root)
         val custom = ContactPropertiesSerializer.extract(root, knownKeys, jsonDecoder.json)
-        return CreateContactRequest(
-            email = known.email,
-            firstName = known.firstName,
-            lastName = known.lastName,
-            subscribed = known.subscribed,
-            userGroup = known.userGroup,
-            userId = known.userId,
-            mailingLists = known.mailingLists,
-            customProperties = custom,
-        )
+        return known.toRequest(custom)
     }
+
+    private fun CreateContactRequest.toKnownFields() = CreateContactKnownFields(
+        email = email,
+        firstName = firstName,
+        lastName = lastName,
+        subscribed = subscribed,
+        userGroup = userGroup,
+        userId = userId,
+        mailingLists = mailingLists,
+    )
+
+    private fun CreateContactKnownFields.toRequest(
+        customProperties: Map<String, LoopsValue>,
+    ) = CreateContactRequest(
+        email = email,
+        firstName = firstName,
+        lastName = lastName,
+        subscribed = subscribed,
+        userGroup = userGroup,
+        userId = userId,
+        mailingLists = mailingLists,
+        customProperties = customProperties,
+    )
 }
 
 @Serializable
