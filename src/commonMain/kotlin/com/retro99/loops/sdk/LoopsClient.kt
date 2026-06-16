@@ -3,6 +3,7 @@ package com.retro99.loops.sdk
 import com.retro99.loops.sdk.api.ContactPropertiesApi
 import com.retro99.loops.sdk.api.ContactsApi
 import com.retro99.loops.sdk.api.EventsApi
+import com.retro99.loops.sdk.api.TransactionalApi
 import com.retro99.loops.sdk.ksp.JvmAsync
 import com.retro99.loops.sdk.model.ApiKeyResponse
 import io.ktor.client.HttpClient
@@ -59,6 +60,9 @@ class LoopsClient private constructor(
 
     /** Events resource group. */
     val events: EventsApi = EventsApi(http)
+
+    /** Transactional Emails resource group. */
+    val transactional: TransactionalApi = TransactionalApi(http)
 
     /**
      * Tests the API key (GET /api-key). Returns the team the key belongs to,
