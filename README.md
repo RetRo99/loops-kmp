@@ -61,7 +61,7 @@ Module `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("io.github.retro99:loops-kmp:0.1.0")
+    implementation("io.github.retro99:loops-kmp:0.1.1")
 }
 ```
 
@@ -177,8 +177,8 @@ multiplatform artifact to Maven Central, builds the iOS XCFramework, attaches it
 GitHub Release, and updates `Package.swift`:
 
 ```bash
-git tag 0.1.0
-git push origin 0.1.0
+git tag 0.1.1
+git push origin 0.1.1
 ```
 
 Requires these repository secrets: `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`,
