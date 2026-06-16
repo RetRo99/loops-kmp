@@ -11,3 +11,4 @@ gradle/gradle-daemon-jvm.properties
 xcuserdata/
 *.xcframework
 *.xcframework.zip
+implementation.md
