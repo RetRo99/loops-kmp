@@ -56,6 +56,9 @@ sealed class LoopsValue {
         fun of(value: Boolean) = BooleanValue(value)
         fun of(value: List<LoopsValue>) = ListValue(value)
         fun of(value: Map<String, LoopsValue>) = ObjectValue(value)
+
+        fun ofDateMillis(epochMilliseconds: Long) = NumberValue(epochMilliseconds.toDouble())
+        fun ofDateString(iso8601: String) = StringValue(iso8601)
     }
 }
 
