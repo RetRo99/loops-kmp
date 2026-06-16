@@ -33,4 +33,14 @@ sealed class LoopsException(
     class Serialization(
         cause: Throwable,
     ) : LoopsException("Failed to parse response: ${cause.message}", cause)
+
+    /**
+     * The server responded with HTTP 429 (Too Many Requests). [limit] is the total
+     * number of requests allowed per window; [remaining] is how many are left.
+     * Values default to 0 when the response does not include the expected headers.
+     */
+    class RateLimit(
+        val limit: Int,
+        val remaining: Int,
+    ) : LoopsException("Rate limit exceeded: $remaining/$limit remaining")
 }

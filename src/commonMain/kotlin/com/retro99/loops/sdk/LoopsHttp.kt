@@ -37,8 +37,14 @@ internal class LoopsHttp(private val client: HttpClient) {
         try {
             client.run { block() }
         } catch (exception: ResponseException) {
+            val statusCode = exception.response.status.value
+            if (statusCode == 429) {
+                val limit = exception.response.headers["X-RateLimit-Limit"]?.toIntOrNull() ?: 0
+                val remaining = exception.response.headers["X-RateLimit-Remaining"]?.toIntOrNull() ?: 0
+                throw LoopsException.RateLimit(limit = limit, remaining = remaining)
+            }
             throw LoopsException.Api(
-                statusCode = exception.response.status.value,
+                statusCode = statusCode,
                 body = exception.response.bodyAsText(),
             )
         } catch (exception: SerializationException) {

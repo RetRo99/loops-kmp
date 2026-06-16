@@ -245,4 +245,58 @@ class LoopsClientTest {
         // Then
         assertEquals("sess-xyz", seenSession)
     }
+
+    // ── rate limiting ─────────────────────────────────────────────────────────
+
+    @Test
+    fun `direct - 429 response throws RateLimit with parsed headers`() = runTest {
+        // Given
+        val engine = MockEngine {
+            respond(
+                content = """{"success":false,"message":"Rate limited"}""",
+                status = HttpStatusCode(429, "Too Many Requests"),
+                headers = headersOf(
+                    HttpHeaders.ContentType to listOf("application/json"),
+                    "X-RateLimit-Limit" to listOf("100"),
+                    "X-RateLimit-Remaining" to listOf("0"),
+                ),
+            )
+        }
+        val classUnderTest = LoopsClient.direct(
+            apiKey = "k",
+            baseUrl = LoopsClient.LOOPS_BASE_URL,
+            engine = engine,
+        )
+
+        // When / Then
+        val error = assertFailsWith<LoopsException.RateLimit> {
+            classUnderTest.testApiKey()
+        }
+        assertEquals(100, error.limit)
+        assertEquals(0, error.remaining)
+    }
+
+    @Test
+    fun `direct - 429 response without headers uses fallback values`() = runTest {
+        // Given
+        val engine = MockEngine {
+            respond(
+                content = """{"success":false,"message":"Rate limited"}""",
+                status = HttpStatusCode(429, "Too Many Requests"),
+                headers = jsonHeaders,
+            )
+        }
+        val classUnderTest = LoopsClient.direct(
+            apiKey = "k",
+            baseUrl = LoopsClient.LOOPS_BASE_URL,
+            engine = engine,
+        )
+
+        // When / Then
+        val error = assertFailsWith<LoopsException.RateLimit> {
+            classUnderTest.testApiKey()
+        }
+        assertEquals(0, error.limit)
+        assertEquals(0, error.remaining)
+    }
 }
