@@ -1,10 +1,13 @@
 package com.retro99.loops.sdk
 
 import com.retro99.loops.sdk.api.CampaignsApi
+import com.retro99.loops.sdk.api.ComponentsApi
 import com.retro99.loops.sdk.api.ContactPropertiesApi
 import com.retro99.loops.sdk.api.ContactsApi
 import com.retro99.loops.sdk.api.EventsApi
 import com.retro99.loops.sdk.api.MailingListsApi
+import com.retro99.loops.sdk.api.MessagesApi
+import com.retro99.loops.sdk.api.ThemesApi
 import com.retro99.loops.sdk.api.TransactionalApi
 import com.retro99.loops.sdk.ksp.JvmAsync
 import com.retro99.loops.sdk.model.ApiKeyResponse
@@ -71,6 +74,15 @@ class LoopsClient private constructor(
 
     /** Campaigns resource group. */
     val campaigns: CampaignsApi = CampaignsApi(http)
+
+    /** Email Messages resource group. */
+    val messages: MessagesApi = MessagesApi(http)
+
+    /** Themes resource group. */
+    val themes: ThemesApi = ThemesApi(http)
+
+    /** Components resource group. */
+    val components: ComponentsApi = ComponentsApi(http)
 
     /**
      * Tests the API key (GET /api-key). Returns the team the key belongs to,
