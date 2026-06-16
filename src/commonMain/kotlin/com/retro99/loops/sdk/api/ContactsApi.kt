@@ -5,10 +5,12 @@ import com.retro99.loops.sdk.ksp.JvmAsync
 import com.retro99.loops.sdk.model.Contact
 import com.retro99.loops.sdk.model.ContactWriteResponse
 import com.retro99.loops.sdk.model.CreateContactRequest
+import com.retro99.loops.sdk.model.UpdateContactRequest
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 
 /**
@@ -48,6 +50,18 @@ class ContactsApi internal constructor(
     suspend fun create(request: CreateContactRequest): ContactWriteResponse =
         http.execute {
             post("contacts/create") {
+                setBody(request)
+            }.body()
+        }
+
+    /**
+     * Update an existing contact. At least one of [request.email] or [request.userId]
+     * must be provided; [customProperties][UpdateContactRequest.customProperties] are
+     * flattened into the top-level JSON body alongside the known fields.
+     */
+    suspend fun update(request: UpdateContactRequest): ContactWriteResponse =
+        http.execute {
+            put("contacts/update") {
                 setBody(request)
             }.body()
         }
