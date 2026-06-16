@@ -8,9 +8,11 @@ import com.retro99.loops.sdk.model.ContactWriteResponse
 import com.retro99.loops.sdk.model.CreateContactRequest
 import com.retro99.loops.sdk.model.DeleteContactRequest
 import com.retro99.loops.sdk.model.DeleteResponse
+import com.retro99.loops.sdk.model.SuppressionRemovalResponse
 import com.retro99.loops.sdk.model.SuppressionStatusResponse
 import com.retro99.loops.sdk.model.UpdateContactRequest
 import io.ktor.client.call.body
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
@@ -90,6 +92,19 @@ class ContactsApi internal constructor(
     suspend fun suppressionStatus(identifier: ContactIdentifier): SuppressionStatusResponse =
         http.execute {
             get("contacts/suppression") {
+                when (identifier) {
+                    is ContactIdentifier.ByEmail -> parameter("email", identifier.email)
+                    is ContactIdentifier.ByUserId -> parameter("userId", identifier.userId)
+                }
+            }.body()
+        }
+
+    /**
+     * Remove the suppression of a contact identified by [identifier].
+     */
+    suspend fun removeSuppression(identifier: ContactIdentifier): SuppressionRemovalResponse =
+        http.execute {
+            delete("contacts/suppression") {
                 when (identifier) {
                     is ContactIdentifier.ByEmail -> parameter("email", identifier.email)
                     is ContactIdentifier.ByUserId -> parameter("userId", identifier.userId)

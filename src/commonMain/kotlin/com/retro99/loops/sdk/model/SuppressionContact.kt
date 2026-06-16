@@ -30,3 +30,13 @@ data class SuppressionStatusResponse(
     @SerialName("removalQuota")
     val removalQuota: RemovalQuota,
 )
+
+@Serializable
+data class SuppressionRemovalResponse(
+    @SerialName("success")
+    val success: Boolean,
+    @SerialName("message")
+    val message: String? = null,
+    @SerialName("removalQuota")
+    val removalQuota: RemovalQuota,
+)
