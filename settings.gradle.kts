@@ -14,3 +14,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
+
+include(":ksp-processor")

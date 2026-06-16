@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.maven.publish)
+    alias(libs.plugins.ksp)
 }
 
 group = "io.github.retro99"
@@ -47,6 +48,7 @@ kotlin {
             implementation(libs.ktor.client.logging)
             implementation(libs.coroutines.core)
         }
+
         commonTest.dependencies {
             implementation(libs.ktor.client.mock)
             implementation(libs.coroutines.test)
@@ -60,8 +62,13 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.ktor.client.cio)
+            implementation(libs.coroutines.jdk8)
         }
     }
+}
+
+dependencies {
+    add("kspJvm", project(":ksp-processor"))
 }
 
 mavenPublishing {

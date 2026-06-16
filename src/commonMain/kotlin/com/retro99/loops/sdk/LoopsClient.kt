@@ -1,5 +1,6 @@
 package com.retro99.loops.sdk
 
+import com.retro99.loops.sdk.ksp.JvmAsync
 import com.retro99.loops.sdk.model.ApiKeyResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -14,6 +15,10 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
@@ -35,6 +40,7 @@ import kotlinx.serialization.json.Json
  *
  * The client owns an [HttpClient]; call [close] when done.
  */
+@JvmAsync
 class LoopsClient private constructor(
     private val config: LoopsConfig,
     engine: HttpClientEngine,
@@ -74,7 +80,16 @@ class LoopsClient private constructor(
     suspend fun testApiKey(): ApiKeyResponse =
         request { client.get("api-key").body() }
 
+    /**
+     * Scope for generated JVM `*Async` wrappers (see [JvmAsync]). Tied to this client's
+     * lifecycle so [close] cancels any in-flight async work. Unused on platforms without
+     * the JVM `CompletableFuture` wrappers.
+     */
+    internal val asyncScope: CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     fun close() {
+        asyncScope.cancel()
         client.close()
     }
 
