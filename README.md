@@ -16,7 +16,7 @@ Swift consumers via **Swift Package Manager**.
   | `client.contacts` | find, create, update, delete, suppression status / removal |
   | `client.contactProperties` | list, create |
   | `client.events` | send (with idempotency key) |
-  | `client.transactional` | send, list, plus email management (create / get / update / draft / publish) |
+  | `client.transactional` | send, listEmails, plus email management (create / get / update / draft / publish) |
   | `client.lists` | list mailing lists |
   | `client.campaigns` | list, get, create, update |
   | `client.emailMessages` | get, update |
@@ -147,6 +147,10 @@ client.contacts.create(
     ),
 )
 
+// ...and read them back: unknown top-level keys are collected into customProperties.
+val contact = client.contacts.find(ContactIdentifier.ByEmail("a@b.com")).single()
+println(contact.customProperties["plan"]) // StringValue(pro)
+
 // Events — eventProperties stay nested; idempotencyKey is optional.
 client.events.send(
     EventRequest(eventName = "signup", email = "a@b.com"),
@@ -157,6 +161,7 @@ client.events.send(
 val email = client.transactional.createEmail(NameRequest("Welcome"))
 client.transactional.ensureEmailDraft(email.id)
 client.transactional.publishEmail(email.id)
+val emails = client.transactional.listEmails(perPage = 20) // Page<TransactionalEmail>
 
 // Uploads — the SDK only fetches the presigned URL; you PUT the bytes yourself.
 val upload = client.uploads.create(CreateUploadRequest("image/png", bytes.size))
