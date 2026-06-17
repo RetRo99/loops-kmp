@@ -134,6 +134,76 @@ class LiveApiIntegrationTest {
     }
 
     @Test
+    fun `update by email changes a field and flattens custom properties read back via find`() {
+        val key = key ?: return
+        runBlocking {
+            val client = client()
+            val email = "sdk-it-update-${System.currentTimeMillis()}@example.com"
+            try {
+                client.contacts.create(CreateContactRequest(email = email, firstName = "Before"))
+
+                // The success path of PUT contacts/update: change a known field and flatten a
+                // custom property in the same request, then confirm both stuck via find.
+                val updated = client.contacts.update(
+                    com.retro99.loops.sdk.model.UpdateContactRequest(
+                        email = email,
+                        firstName = "After",
+                        customProperties = mapOf("plan" to LoopsValue.of("enterprise")),
+                    ),
+                )
+                assertTrue(updated.success)
+
+                val contact = client.contacts.find(ContactIdentifier.ByEmail(email)).single()
+                assertEquals("After", contact.firstName)
+                assertEquals(
+                    LoopsValue.of("enterprise"),
+                    contact.customProperties["plan"],
+                    "custom property set on update should round-trip back through find",
+                )
+            } finally {
+                runCatching { client.contacts.delete(ContactIdentifier.ByEmail(email)) }
+                client.close()
+            }
+        }
+    }
+
+    @Test
+    fun `find delete and suppression resolve a contact by userId not just email`() {
+        val key = key ?: return
+        runBlocking {
+            val client = client()
+            // Every other live test identifies contacts by email; this one drives the
+            // ContactIdentifier.ByUserId path (userId query param / body field) end to end.
+            val userId = "sdk-it-uid-${System.currentTimeMillis()}"
+            val email = "$userId@example.com"
+            val identifier = ContactIdentifier.ByUserId(userId)
+            try {
+                client.contacts.create(CreateContactRequest(email = email, userId = userId))
+
+                val found = client.contacts.find(identifier).single()
+                assertEquals(userId, found.userId)
+                assertEquals(email, found.email)
+
+                // Suppression status resolved by userId must still return the typed envelope.
+                val status = client.contacts.suppressionStatus(identifier)
+                assertEquals(false, status.isSuppressed)
+
+                // Delete by userId; finding again should yield no contact.
+                val deleted = client.contacts.delete(identifier)
+                assertTrue(deleted.success)
+                assertTrue(
+                    client.contacts.find(identifier).isEmpty(),
+                    "contact deleted by userId should no longer be found",
+                )
+            } finally {
+                // Belt-and-suspenders cleanup in case an assertion failed before the delete.
+                runCatching { client.contacts.delete(identifier) }
+                client.close()
+            }
+        }
+    }
+
+    @Test
     fun `a date-typed property rejects a string-encoded millis timestamp`() {
         val key = key ?: return
         runBlocking {

@@ -218,6 +218,64 @@ class LiveApiCoverageTest {
         assertEquals(404, error.statusCode)
     }
 
+    @Test
+    fun `transactional send succeeds with data variables an attachment and an idempotency key`() =
+        withClient {
+            // The 404 test above only covers the failure path. This exercises the success path of
+            // POST transactional end to end: the dataVariables nested object, the attachments array
+            // (Attachment model), and the Idempotency-Key header. We stand up a throwaway
+            // transactional email (create -> ensure draft -> publish) and send to its published id.
+            val email = transactional.createEmail(
+                NameRequest("sdk-it-send-${System.currentTimeMillis()}"),
+            )
+            transactional.ensureEmailDraft(email.id)
+            val published = transactional.publishEmail(email.id)
+            if (published.publishedEmailMessageId == null) {
+                // A blank draft may not publish into a sendable transactional id; skip rather than
+                // fail, since the management lifecycle itself is covered by LiveApiIntegrationTest.
+                return@withClient
+            }
+
+            // A tiny 1x1 PNG, base64-encoded, to exercise the Attachment(filename, contentType,
+            // data) model over the wire.
+            val onePixelPngBase64 =
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+            val response = transactional.send(
+                TransactionalSendRequest(
+                    email = "sdk-it-send-${System.currentTimeMillis()}@example.com",
+                    transactionalId = email.id,
+                    addToAudience = false,
+                    dataVariables = mapOf(
+                        "name" to LoopsValue.of("SDK"),
+                        "count" to LoopsValue.of(3.0),
+                    ),
+                    attachments = listOf(
+                        com.retro99.loops.sdk.model.Attachment(
+                            filename = "pixel.png",
+                            contentType = "image/png",
+                            data = onePixelPngBase64,
+                        ),
+                    ),
+                ),
+                idempotencyKey = "sdk-it-idem-${System.currentTimeMillis()}",
+            )
+            assertTrue(response.success)
+        }
+
+    @Test
+    fun `events send forwards an idempotency key`() = withClient {
+        // Companion to the events test above, which omits the key. This drives the
+        // Idempotency-Key header path of POST events/send against the real API.
+        val response = events.send(
+            EventRequest(
+                eventName = "sdk_it_event",
+                email = "sdk-it-event-idem-${System.currentTimeMillis()}@example.com",
+            ),
+            idempotencyKey = "sdk-it-event-idem-${System.currentTimeMillis()}",
+        )
+        assertTrue(response.success)
+    }
+
     // endregion
 
     // region Creates (persistent — sdk-it- prefixed)
