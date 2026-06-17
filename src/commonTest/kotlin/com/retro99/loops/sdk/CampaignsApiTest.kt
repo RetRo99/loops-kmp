@@ -69,7 +69,7 @@ class CampaignsApiTest {
             seenPath = request.url.encodedPath
             seenBody = (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()
             respond(
-                content = """{"id":"c-new","name":"New Campaign","status":"Draft"}""",
+                content = """{"id":"c-new","name":"New Campaign","status":"Draft","emailMessageId":"em-1","emailMessageContentRevisionId":"rev-1"}""",
                 status = HttpStatusCode.OK,
                 headers = jsonHeaders,
             )
@@ -80,6 +80,10 @@ class CampaignsApiTest {
         assertEquals("/api/v1/campaigns", seenPath)
         assertEquals("""{"name":"New Campaign"}""", seenBody)
         assertEquals("c-new", result.id)
+        assertEquals("em-1", result.emailMessageId)
+        // The revision id the create response carries must survive decode — callers pass it as
+        // expectedRevisionId on their first email-message update. (Was silently dropped before.)
+        assertEquals("rev-1", result.emailMessageContentRevisionId)
     }
 
     @Test

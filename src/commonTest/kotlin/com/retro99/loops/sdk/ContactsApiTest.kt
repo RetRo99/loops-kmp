@@ -1,6 +1,8 @@
 package com.retro99.loops.sdk
 
+import com.retro99.loops.sdk.model.Contact
 import com.retro99.loops.sdk.model.ContactIdentifier
+import com.retro99.loops.sdk.model.LoopsValue
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
@@ -72,6 +74,53 @@ class ContactsApiTest {
         }
         assertEquals(404, error.statusCode)
         assertTrue(error.body.contains("Not found"))
+    }
+
+    @Test
+    fun `contacts find - collects unknown top-level keys into customProperties`() = runTest {
+        // Known fields decode as typed properties; everything else (string/number/boolean/null)
+        // is collected into customProperties so callers can read back what they set.
+        val body = """[{"id":"c1","email":"a@b.com","firstName":"Alice","mailingLists":{},""" +
+            """"plan":"pro","age":3,"vip":true}]"""
+        val engine = MockEngine {
+            respond(content = body, status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+        val classUnderTest = LoopsClient.direct(
+            apiKey = "k",
+            baseUrl = LoopsClient.LOOPS_BASE_URL,
+            engine = engine,
+        )
+        val contact = classUnderTest.contacts.find(ContactIdentifier.ByEmail("a@b.com")).single()
+        // Known fields stay typed and are NOT duplicated into customProperties.
+        assertEquals("Alice", contact.firstName)
+        assertEquals(
+            mapOf(
+                "plan" to LoopsValue.of("pro"),
+                "age" to LoopsValue.of(3.0),
+                "vip" to LoopsValue.of(true),
+            ),
+            contact.customProperties,
+        )
+    }
+
+    @Test
+    fun `Contact serializer round-trips custom properties through JSON`() {
+        val original = Contact(
+            id = "c1",
+            email = "a@b.com",
+            firstName = "Alice",
+            customProperties = mapOf(
+                "plan" to LoopsValue.of("pro"),
+                "age" to LoopsValue.of(3.0),
+            ),
+        )
+        val json = sdkJson.encodeToString(Contact.serializer(), original)
+        // Custom props are flattened to top-level siblings, not nested.
+        assertTrue(json.contains("\"plan\":\"pro\""), json)
+        assertTrue(json.contains("\"age\":3"), json)
+        assertTrue(!json.contains("customProperties"), json)
+        val decoded = sdkJson.decodeFromString(Contact.serializer(), json)
+        assertEquals(original, decoded)
     }
 
     @Test

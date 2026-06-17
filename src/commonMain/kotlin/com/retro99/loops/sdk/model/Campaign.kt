@@ -19,4 +19,11 @@ data class Campaign(
     val updatedAt: String? = null,
     @SerialName("emailMessageId")
     val emailMessageId: String? = null,
+    /**
+     * The `contentRevisionId` of the email message created alongside a campaign
+     * (`campaigns.create`). Pass it as `expectedRevisionId` on the first
+     * `emailMessages.update` for that message. Only present on the create response.
+     */
+    @SerialName("emailMessageContentRevisionId")
+    val emailMessageContentRevisionId: String? = null,
 )

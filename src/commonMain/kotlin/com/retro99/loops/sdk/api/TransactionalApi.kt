@@ -6,13 +6,12 @@ import com.retro99.loops.sdk.model.NameRequest
 import com.retro99.loops.sdk.model.Page
 import com.retro99.loops.sdk.model.SuccessResponse
 import com.retro99.loops.sdk.model.TransactionalEmail
-import com.retro99.loops.sdk.model.TransactionalMessage
+import com.retro99.loops.sdk.model.TransactionalEmailSummary
 import com.retro99.loops.sdk.model.TransactionalSendRequest
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
-import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 
@@ -34,14 +33,39 @@ class TransactionalApi internal constructor(
      * prevent duplicate sends — the header `Idempotency-Key` is set only when non-null.
      */
     /**
-     * List transactional email messages with optional pagination.
+     * List transactional emails with optional pagination (GET transactional).
+     *
+     * This hits the **deprecated** `v1/transactional` list endpoint (matching the official
+     * `loops-js` behavior) and returns minimal [TransactionalEmailSummary] entries. Prefer
+     * [listEmails], which hits the current `v1/transactional-emails` endpoint and returns the
+     * richer [TransactionalEmail] resource.
      */
+    @Deprecated(
+        message = "Use listEmails(), which hits the current v1/transactional-emails endpoint.",
+        replaceWith = ReplaceWith("listEmails(perPage, cursor)"),
+    )
     suspend fun list(
         perPage: Int? = null,
         cursor: String? = null,
-    ): Page<TransactionalMessage> =
+    ): Page<TransactionalEmailSummary> =
         http.execute {
             get("transactional") {
+                perPage?.let { parameter("perPage", it) }
+                cursor?.let { parameter("cursor", it) }
+            }.body()
+        }
+
+    /**
+     * List transactional email definitions with optional pagination
+     * (GET transactional-emails). Returns the full [TransactionalEmail] resource, including
+     * draft/published message references and timestamps.
+     */
+    suspend fun listEmails(
+        perPage: Int? = null,
+        cursor: String? = null,
+    ): Page<TransactionalEmail> =
+        http.execute {
+            get("transactional-emails") {
                 perPage?.let { parameter("perPage", it) }
                 cursor?.let { parameter("cursor", it) }
             }.body()
@@ -80,11 +104,11 @@ class TransactionalApi internal constructor(
         }
 
     /**
-     * Update a transactional email's metadata (PATCH transactional-emails/{id}).
+     * Update a transactional email's metadata (POST transactional-emails/{id}).
      */
     suspend fun updateEmail(id: String, request: NameRequest): TransactionalEmail =
         http.execute {
-            patch("transactional-emails/$id") {
+            post("transactional-emails/$id") {
                 setBody(request)
             }.body()
         }

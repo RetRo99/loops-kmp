@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.retro99.loops.sdk
 
 import com.retro99.loops.sdk.model.Attachment
@@ -96,7 +98,9 @@ class TransactionalApiTest {
         var seenPath: String? = null
         var seenPerPage: String? = null
         var seenCursor: String? = null
-        val body = """{"pagination":{"totalResults":5,"perPage":2,"totalPages":3},"data":[{"id":"tm-1","recipient":"a@b.com","status":"sent","sentAt":"2024-01-01T00:00:00Z"},{"id":"tm-2","recipient":"c@d.com","status":"opened","openedAt":"2024-01-02T00:00:00Z"}]}"""
+        // Deprecated GET /transactional returns minimal TransactionalEmailSummary items
+        // (id, name, lastUpdated, dataVariables) per the spec's TransactionalEmail list schema.
+        val body = """{"pagination":{"totalResults":5,"perPage":2,"totalPages":3},"data":[{"id":"te-1","name":"Welcome","lastUpdated":"2024-01-01T00:00:00Z","dataVariables":["firstName"]},{"id":"te-2","name":"Receipt","lastUpdated":"2024-01-02T00:00:00Z","dataVariables":[]}]}"""
         val engine = MockEngine { request ->
             seenMethod = request.method
             seenPath = request.url.encodedPath
@@ -105,6 +109,7 @@ class TransactionalApiTest {
             respond(content = body, status = HttpStatusCode.OK, headers = jsonHeaders)
         }
         val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
+        @Suppress("DEPRECATION")
         val result = classUnderTest.transactional.list(perPage = 2, cursor = "abc")
         assertEquals(HttpMethod.Get, seenMethod)
         assertEquals("/api/v1/transactional", seenPath)
@@ -112,9 +117,10 @@ class TransactionalApiTest {
         assertEquals("abc", seenCursor)
         assertEquals(5, result.pagination.totalResults)
         assertEquals(2, result.data.size)
-        assertEquals("tm-1", result.data[0].id)
-        assertEquals("a@b.com", result.data[0].recipient)
-        assertEquals("sent", result.data[0].status)
+        assertEquals("te-1", result.data[0].id)
+        assertEquals("Welcome", result.data[0].name)
+        assertEquals("2024-01-01T00:00:00Z", result.data[0].lastUpdated)
+        assertEquals(listOf("firstName"), result.data[0].dataVariables)
     }
 
     @Test
@@ -198,7 +204,7 @@ class TransactionalApiTest {
     }
 
     @Test
-    fun `updateEmail - sends PATCH to path with name`() = runTest {
+    fun `updateEmail - sends POST to path with name`() = runTest {
         var seenMethod: HttpMethod? = null
         var seenPath: String? = null
         var seenBody: String? = null
@@ -210,10 +216,38 @@ class TransactionalApiTest {
         }
         val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
         val result = classUnderTest.transactional.updateEmail("te-1", NameRequest("Renamed"))
-        assertEquals(HttpMethod.Patch, seenMethod)
+        assertEquals(HttpMethod.Post, seenMethod)
         assertEquals("/api/v1/transactional-emails/te-1", seenPath)
         assertEquals("""{"name":"Renamed"}""", seenBody)
         assertEquals("te-1", result.id)
+    }
+
+    @Test
+    fun `listEmails - sends GET to transactional-emails with pagination and parses Page`() = runTest {
+        var seenMethod: HttpMethod? = null
+        var seenPath: String? = null
+        var seenPerPage: String? = null
+        var seenCursor: String? = null
+        val body = """{"pagination":{"totalResults":1,"perPage":20,"totalPages":1,"nextCursor":null},"data":[$transactionalEmailBody]}"""
+        val engine = MockEngine { request ->
+            seenMethod = request.method
+            seenPath = request.url.encodedPath
+            seenPerPage = request.url.parameters["perPage"]
+            seenCursor = request.url.parameters["cursor"]
+            respond(content = body, status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+        val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
+        val result = classUnderTest.transactional.listEmails(perPage = 20, cursor = "cur")
+        assertEquals(HttpMethod.Get, seenMethod)
+        assertEquals("/api/v1/transactional-emails", seenPath)
+        assertEquals("20", seenPerPage)
+        assertEquals("cur", seenCursor)
+        assertEquals(1, result.pagination.totalResults)
+        assertEquals(1, result.data.size)
+        assertEquals("te-1", result.data[0].id)
+        assertEquals("Welcome", result.data[0].name)
+        assertEquals("em-draft", result.data[0].draftEmailMessageId)
+        assertEquals(listOf("firstName", "lastName"), result.data[0].dataVariables)
     }
 
     @Test
