@@ -1,6 +1,16 @@
 package com.retro99.loops.sdk
 
+import com.retro99.loops.sdk.api.CampaignsApi
+import com.retro99.loops.sdk.api.ComponentsApi
+import com.retro99.loops.sdk.api.ContactPropertiesApi
 import com.retro99.loops.sdk.api.ContactsApi
+import com.retro99.loops.sdk.api.DedicatedSendingIpsApi
+import com.retro99.loops.sdk.api.EmailMessagesApi
+import com.retro99.loops.sdk.api.EventsApi
+import com.retro99.loops.sdk.api.MailingListsApi
+import com.retro99.loops.sdk.api.ThemesApi
+import com.retro99.loops.sdk.api.TransactionalApi
+import com.retro99.loops.sdk.api.UploadsApi
 import com.retro99.loops.sdk.ksp.JvmAsync
 import com.retro99.loops.sdk.model.ApiKeyResponse
 import io.ktor.client.HttpClient
@@ -51,6 +61,36 @@ class LoopsClient private constructor(
     // region Resources
     /** Contacts resource group. */
     val contacts: ContactsApi = ContactsApi(http)
+
+    /** Contact Properties resource group. */
+    val contactProperties: ContactPropertiesApi = ContactPropertiesApi(http)
+
+    /** Events resource group. */
+    val events: EventsApi = EventsApi(http)
+
+    /** Transactional Emails resource group. */
+    val transactional: TransactionalApi = TransactionalApi(http)
+
+    /** Mailing Lists resource group. */
+    val lists: MailingListsApi = MailingListsApi(http)
+
+    /** Campaigns resource group. */
+    val campaigns: CampaignsApi = CampaignsApi(http)
+
+    /** Email Messages resource group. */
+    val emailMessages: EmailMessagesApi = EmailMessagesApi(http)
+
+    /** Themes resource group. */
+    val themes: ThemesApi = ThemesApi(http)
+
+    /** Components resource group. */
+    val components: ComponentsApi = ComponentsApi(http)
+
+    /** Dedicated Sending IPs resource group. */
+    val sendingIps: DedicatedSendingIpsApi = DedicatedSendingIpsApi(http)
+
+    /** Uploads resource group (image assets for email content). */
+    val uploads: UploadsApi = UploadsApi(http)
 
     /**
      * Tests the API key (GET /api-key). Returns the team the key belongs to,

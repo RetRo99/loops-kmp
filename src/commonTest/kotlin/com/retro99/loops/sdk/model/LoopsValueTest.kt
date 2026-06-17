@@ -32,6 +32,35 @@ class LoopsValueTest {
         assertEquals("true", result)
     }
 
+    // ── date factories (live-validated wire forms — see Decision 8 in implementation.md):
+    //    Loops accepts a date custom property as a ms-timestamp JSON number or an ISO-8601 string ──
+
+    @Test
+    fun `ofDateMillis builds a NumberValue holding the millis`() {
+        val millis = 1705486871000L
+        val value = LoopsValue.ofDateMillis(millis)
+        assertIs<LoopsValue.NumberValue>(value)
+        // Double is exact for any real-world millis (well under 2^53); the round-trip is lossless.
+        assertEquals(millis, value.value.toLong())
+    }
+
+    @Test
+    fun `ofDateMillis serializes to the numeric form Loops accepts`() {
+        val result = json.encodeToString(LoopsValueSerializer, LoopsValue.ofDateMillis(1705486871000L))
+        // Double renders the integral millis in exponent form; Loops parses it to the correct instant
+        // (verified live: stored as 2024-01-17T10:21:11.000Z).
+        assertEquals("1.705486871E12", result)
+    }
+
+    @Test
+    fun `ofDateString builds a StringValue and serializes as an ISO-8601 string`() {
+        val iso = "2024-01-17T10:21:11Z"
+        val value = LoopsValue.ofDateString(iso)
+        assertIs<LoopsValue.StringValue>(value)
+        assertEquals(iso, value.value)
+        assertEquals("\"$iso\"", json.encodeToString(LoopsValueSerializer, value))
+    }
+
     @Test
     fun `LoopsValue deserializes string from JSON`() {
         val result = json.decodeFromString(LoopsValueSerializer, "\"world\"")
