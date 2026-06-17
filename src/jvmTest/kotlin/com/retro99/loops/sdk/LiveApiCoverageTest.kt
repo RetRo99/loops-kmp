@@ -84,6 +84,16 @@ class LiveApiCoverageTest {
         page.data.firstOrNull()?.let { first ->
             val fetched = themes.get(first.id)
             assertEquals(first.id, fetched.id)
+            // styles is the Map<String, LoopsValue> that carries colors (strings) and sizes
+            // (numbers). Assert it decodes — and that every value resolves to a LoopsValue case,
+            // proving the mixed string/number style object round-trips through the real API.
+            fetched.styles.forEach { (styleKey, styleValue) ->
+                assertTrue(styleKey.isNotBlank(), "a style key should be non-blank")
+                assertTrue(
+                    styleValue is LoopsValue.StringValue || styleValue is LoopsValue.NumberValue,
+                    "style '$styleKey' should decode to a string or number LoopsValue",
+                )
+            }
         }
     }
 
@@ -118,6 +128,14 @@ class LiveApiCoverageTest {
         }
         val message = emailMessages.get(emailMessageId)
         assertEquals(emailMessageId, message.id)
+        // A real email message carries compiled content (lmx) — assert it decodes as a non-blank
+        // string rather than only checking the id, so a regression in the lmx field is caught live.
+        assertTrue(message.lmx?.isNotBlank() == true, "email message should expose compiled lmx")
+        // warnings is optional; when present each entry must decode into the typed warning model
+        // (the nested EmailMessageWarning shape) rather than being dropped.
+        message.warnings?.forEach { warning ->
+            assertNotNull(warning.severity, "a returned warning should carry a severity")
+        }
     }
 
     @Test
@@ -276,6 +294,27 @@ class LiveApiCoverageTest {
         assertTrue(response.success)
     }
 
+    @Test
+    fun `events send resolves a contact by userId not just email`() = withClient {
+        // Every other live event test identifies the contact by email; this one drives the
+        // userId branch of EventRequest end to end (userId travels in the body, not email). The
+        // contact is created first so the userId resolves to a real contact.
+        val userId = "sdk-it-event-uid-${System.currentTimeMillis()}"
+        val email = "$userId@example.com"
+        try {
+            contacts.create(CreateContactRequest(email = email, userId = userId))
+            val response = events.send(
+                EventRequest(
+                    eventName = "sdk_it_event",
+                    userId = userId,
+                ),
+            )
+            assertTrue(response.success)
+        } finally {
+            runCatching { contacts.delete(ContactIdentifier.ByUserId(userId)) }
+        }
+    }
+
     // endregion
 
     // region Creates (persistent — sdk-it- prefixed)
@@ -345,6 +384,42 @@ class LiveApiCoverageTest {
         )
         assertTrue(response.emailAssetId.isNotBlank())
         assertTrue(response.presignedUrl.startsWith("https://"), "presigned URL should be https")
+    }
+
+    @Test
+    fun `uploads create PUT and complete returns a final hosted url`() = withClient {
+        // The success path of the two-step upload: reserve a slot, PUT the bytes to the presigned
+        // S3 URL ourselves (the SDK only brokers URLs, it does not proxy the binary), then
+        // complete and assert the final hosted URL. The PUT uses the JDK HTTP client directly so
+        // the test stays decoupled from the SDK's Ktor engine.
+        val onePixelPng = java.util.Base64.getDecoder().decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+        )
+        val created = uploads.create(
+            CreateUploadRequest(contentType = "image/png", contentLength = onePixelPng.size),
+        )
+
+        // PUT the bytes to the presigned URL. The Content-Type must match what create() reserved.
+        val httpClient = java.net.http.HttpClient.newHttpClient()
+        val putRequest = java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(created.presignedUrl))
+            .header("Content-Type", "image/png")
+            .PUT(java.net.http.HttpRequest.BodyPublishers.ofByteArray(onePixelPng))
+            .build()
+        val putResponse = httpClient.send(
+            putRequest,
+            java.net.http.HttpResponse.BodyHandlers.discarding(),
+        )
+        if (putResponse.statusCode() !in 200..299) {
+            // The S3 PUT is outside the SDK's contract; if the bucket rejects the upload there is
+            // nothing meaningful left to assert about complete(). Skip rather than fail spuriously.
+            return@withClient
+        }
+
+        // complete -> POST /uploads/{emailAssetId}/complete. Returns the asset's final hosted URL.
+        val completed = uploads.complete(created.emailAssetId)
+        assertEquals(created.emailAssetId, completed.emailAssetId)
+        assertTrue(completed.finalUrl.startsWith("https://"), "final URL should be https")
     }
 
     @Test

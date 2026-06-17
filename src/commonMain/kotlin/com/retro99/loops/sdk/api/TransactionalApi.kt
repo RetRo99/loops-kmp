@@ -29,10 +29,6 @@ class TransactionalApi internal constructor(
 ) {
 
     /**
-     * Send a transactional email. Optionally provide an [idempotencyKey] (≤100 chars) to
-     * prevent duplicate sends — the header `Idempotency-Key` is set only when non-null.
-     */
-    /**
      * List transactional emails with optional pagination (GET transactional).
      *
      * This hits the **deprecated** `v1/transactional` list endpoint (matching the official
@@ -71,6 +67,10 @@ class TransactionalApi internal constructor(
             }.body()
         }
 
+    /**
+     * Send a transactional email. Optionally provide an [idempotencyKey] (≤100 chars) to
+     * prevent duplicate sends — the header `Idempotency-Key` is set only when non-null.
+     */
     suspend fun send(
         request: TransactionalSendRequest,
         idempotencyKey: String? = null,
