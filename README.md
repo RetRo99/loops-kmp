@@ -37,9 +37,6 @@ Swift consumers via **Swift Package Manager**.
     - `LoopsException.Serialization(cause)` — a 2xx body that didn't match the expected model.
 
 > No third-party (Ktor, kotlinx.serialization) exceptions are exposed to consumers.
->
-> Swift consumers using an exhaustive `switch onEnum(of: error)` must handle all four cases;
-> adding `.rateLimit` is a source-breaking change for switches written against earlier versions.
 
 ---
 
