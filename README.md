@@ -7,17 +7,33 @@ Swift consumers via **Swift Package Manager**.
 ## Features
 
 - `LoopsClient` built on Ktor (OkHttp on Android, NSURLSession/Darwin on iOS).
-- Suspend API. Currently implemented:
-    - `testApiKey()` — validate the API key (`GET /api-key`).
+- **Full coverage of the Loops API**, organized into resource groups on the client. Suspend API
+  on Kotlin; `CompletableFuture` wrappers on JVM; `async`/`await` on Swift via SKIE.
+- `testApiKey()` lives directly on the client (`GET /api-key`); everything else is grouped:
+
+  | Group | Endpoints |
+  |---|---|
+  | `client.contacts` | find, create, update, delete, suppression status / removal |
+  | `client.contactProperties` | list, create |
+  | `client.events` | send (with idempotency key) |
+  | `client.transactional` | send, list, plus email management (create / get / update / draft / publish) |
+  | `client.lists` | list mailing lists |
+  | `client.campaigns` | list, get, create, update |
+  | `client.emailMessages` | get, update |
+  | `client.themes` | list, get |
+  | `client.components` | list, get |
+  | `client.sendingIps` | list dedicated sending IPs |
+  | `client.uploads` | create (presigned URL), complete |
+
 - Two construction modes — **direct** (server-side) and **proxy** (mobile) — with the security
   boundary enforced at the type level.
 - All failures surface as a sealed `LoopsException`:
     - `LoopsException.Api(statusCode, body)` — the server returned a non-2xx response.
+    - `LoopsException.RateLimit(limit, remaining)` — HTTP 429, with the `x-ratelimit-*` headers parsed.
     - `LoopsException.Network(cause)` — no response (offline, timeout, DNS). Usually retryable.
     - `LoopsException.Serialization(cause)` — a 2xx body that didn't match the expected model.
 
-> More endpoints (contacts, transactional emails, events) are planned. No third-party
-> (Ktor, kotlinx.serialization) exceptions are exposed to consumers.
+> No third-party (Ktor, kotlinx.serialization) exceptions are exposed to consumers.
 
 ---
 
@@ -113,6 +129,45 @@ val client = LoopsClient.direct(
     baseUrl = "https://eu.loops.so/api/v1/",
 )
 ```
+
+### Working with resources
+
+Each resource group hangs off the client. A few representative calls:
+
+```kotlin
+// Contacts — custom properties are flattened to top-level JSON automatically.
+client.contacts.create(
+    CreateContactRequest(
+        email = "a@b.com",
+        firstName = "Ada",
+        customProperties = mapOf(
+            "plan" to LoopsValue.of("pro"),
+            "signupDate" to LoopsValue.ofDateMillis(1_705_486_871_000),
+        ),
+    ),
+)
+
+// Events — eventProperties stay nested; idempotencyKey is optional.
+client.events.send(
+    EventRequest(eventName = "signup", email = "a@b.com"),
+    idempotencyKey = "evt-123",
+)
+
+// Transactional email management (alpha on the Loops side).
+val email = client.transactional.createEmail(NameRequest("Welcome"))
+client.transactional.ensureEmailDraft(email.id)
+client.transactional.publishEmail(email.id)
+
+// Uploads — the SDK only fetches the presigned URL; you PUT the bytes yourself.
+val upload = client.uploads.create(CreateUploadRequest("image/png", bytes.size))
+// httpClient.put(upload.presignedUrl) { setBody(bytes) }  // your own PUT
+val asset = client.uploads.complete(upload.emailAssetId)
+println(asset.finalUrl)
+```
+
+> **JVM (Java) callers:** every suspend method has a generated `*Async()` twin returning a
+> `CompletableFuture` (e.g. `client.contacts.createAsync(...)`).
+> **Swift callers:** call the same methods with `try await` thanks to SKIE.
 
 ### Mobile (`proxy` mode)
 
