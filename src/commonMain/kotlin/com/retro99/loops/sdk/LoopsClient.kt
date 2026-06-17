@@ -10,6 +10,7 @@ import com.retro99.loops.sdk.api.EventsApi
 import com.retro99.loops.sdk.api.MailingListsApi
 import com.retro99.loops.sdk.api.ThemesApi
 import com.retro99.loops.sdk.api.TransactionalApi
+import com.retro99.loops.sdk.api.UploadsApi
 import com.retro99.loops.sdk.ksp.JvmAsync
 import com.retro99.loops.sdk.model.ApiKeyResponse
 import io.ktor.client.HttpClient
@@ -87,6 +88,9 @@ class LoopsClient private constructor(
 
     /** Dedicated Sending IPs resource group. */
     val sendingIps: DedicatedSendingIpsApi = DedicatedSendingIpsApi(http)
+
+    /** Uploads resource group (image assets for email content). */
+    val uploads: UploadsApi = UploadsApi(http)
 
     /**
      * Tests the API key (GET /api-key). Returns the team the key belongs to,
