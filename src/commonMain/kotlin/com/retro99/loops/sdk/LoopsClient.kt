@@ -147,6 +147,10 @@ class LoopsClient private constructor(
          * Full-control [direct] factory exposing network [timeout] and request [logging]
          * alongside [retry]. Use this overload when you need to tune timeouts or enable
          * logging; the shorter overloads cover the common cases.
+         *
+         * Provided as a distinct overload (rather than a defaulted `engine` parameter) so
+         * Swift/Objective-C callers — which do not see Kotlin default arguments — can call
+         * it without supplying an [HttpClientEngine].
          */
         fun direct(
             apiKey: String,
@@ -154,7 +158,15 @@ class LoopsClient private constructor(
             retry: RetryConfig,
             timeout: TimeoutConfig,
             logging: LoggingConfig,
-            engine: HttpClientEngine = httpClientEngine(),
+        ): LoopsClient = direct(apiKey, baseUrl, retry, timeout, logging, httpClientEngine())
+
+        fun direct(
+            apiKey: String,
+            baseUrl: String,
+            retry: RetryConfig,
+            timeout: TimeoutConfig,
+            logging: LoggingConfig,
+            engine: HttpClientEngine,
         ): LoopsClient = LoopsClient(
             LoopsConfig.Direct(apiKey, baseUrl, retry, timeout, logging),
             engine,
@@ -200,6 +212,10 @@ class LoopsClient private constructor(
          * Full-control [proxy] factory exposing network [timeout] and request [logging]
          * alongside [retry]. Use this overload when you need to tune timeouts or enable
          * logging; the shorter overloads cover the common cases.
+         *
+         * Provided as a distinct overload (rather than a defaulted `engine` parameter) so
+         * Swift/Objective-C callers — which do not see Kotlin default arguments — can call
+         * it without supplying an [HttpClientEngine].
          */
         fun proxy(
             proxyUrl: String,
@@ -207,7 +223,15 @@ class LoopsClient private constructor(
             retry: RetryConfig,
             timeout: TimeoutConfig,
             logging: LoggingConfig,
-            engine: HttpClientEngine = httpClientEngine(),
+        ): LoopsClient = proxy(proxyUrl, auth, retry, timeout, logging, httpClientEngine())
+
+        fun proxy(
+            proxyUrl: String,
+            auth: ProxyAuth,
+            retry: RetryConfig,
+            timeout: TimeoutConfig,
+            logging: LoggingConfig,
+            engine: HttpClientEngine,
         ): LoopsClient = LoopsClient(
             LoopsConfig.Proxy(proxyUrl, auth, retry, timeout, logging),
             engine,
