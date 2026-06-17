@@ -9,8 +9,7 @@ data class Component(
     val id: String,
     @SerialName("name")
     val name: String? = null,
-    @SerialName("html")
-    val html: String? = null,
-    @SerialName("createdAt")
-    val createdAt: String? = null,
+    /** The component body serialized as LMX. */
+    @SerialName("lmx")
+    val lmx: String? = null,
 )

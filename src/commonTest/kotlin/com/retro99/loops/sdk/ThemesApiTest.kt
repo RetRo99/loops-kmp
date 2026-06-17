@@ -1,5 +1,6 @@
 package com.retro99.loops.sdk
 
+import com.retro99.loops.sdk.model.LoopsValue
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
@@ -16,22 +17,43 @@ class ThemesApiTest {
     private val jsonHeaders = headersOf(HttpHeaders.ContentType, "application/json")
 
     @Test
-    fun `themes list - sends GET and parses response`() = runTest {
+    fun `themes list - sends GET and parses Page envelope with mixed styles`() = runTest {
         var seenMethod: HttpMethod? = null
         var seenPath: String? = null
-        val body = """[{"id":"t-1","name":"Default"}]"""
+        var seenPerPage: String? = null
+        val body = """{"pagination":{"totalResults":1,"perPage":20,"totalPages":1},"data":[{"id":"t-1","name":"Default","isDefault":true,"styles":{"backgroundColor":"#fff","borderRadius":8}}]}"""
         val engine = MockEngine { request ->
             seenMethod = request.method
+            seenPath = request.url.encodedPath
+            seenPerPage = request.url.parameters["perPage"]
+            respond(content = body, status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+        val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
+        val result = classUnderTest.themes.list(perPage = 20)
+        assertEquals(HttpMethod.Get, seenMethod)
+        assertEquals("/api/v1/themes", seenPath)
+        assertEquals("20", seenPerPage)
+        assertEquals(1, result.data.size)
+        val theme = result.data[0]
+        assertEquals("t-1", theme.id)
+        assertEquals(true, theme.isDefault)
+        assertEquals(LoopsValue.of("#fff"), theme.styles["backgroundColor"])
+        assertEquals(LoopsValue.of(8.0), theme.styles["borderRadius"])
+    }
+
+    @Test
+    fun `themes get - sends GET with path id`() = runTest {
+        var seenPath: String? = null
+        val body = """{"id":"t-1","name":"Default","isDefault":false,"styles":{}}"""
+        val engine = MockEngine { request ->
             seenPath = request.url.encodedPath
             respond(content = body, status = HttpStatusCode.OK, headers = jsonHeaders)
         }
         val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
-        val result = classUnderTest.themes.list()
-        assertEquals(HttpMethod.Get, seenMethod)
-        assertEquals("/api/v1/themes", seenPath)
-        assertEquals(1, result.size)
-        assertEquals("t-1", result[0].id)
-        assertEquals("Default", result[0].name)
+        val result = classUnderTest.themes.get("t-1")
+        assertEquals("/api/v1/themes/t-1", seenPath)
+        assertEquals("t-1", result.id)
+        assertEquals("Default", result.name)
     }
 
     @Test

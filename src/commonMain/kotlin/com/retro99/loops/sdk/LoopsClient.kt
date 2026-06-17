@@ -4,10 +4,10 @@ import com.retro99.loops.sdk.api.CampaignsApi
 import com.retro99.loops.sdk.api.ComponentsApi
 import com.retro99.loops.sdk.api.ContactPropertiesApi
 import com.retro99.loops.sdk.api.ContactsApi
+import com.retro99.loops.sdk.api.DedicatedSendingIpsApi
+import com.retro99.loops.sdk.api.EmailMessagesApi
 import com.retro99.loops.sdk.api.EventsApi
-import com.retro99.loops.sdk.api.IpPoolsApi
 import com.retro99.loops.sdk.api.MailingListsApi
-import com.retro99.loops.sdk.api.MessagesApi
 import com.retro99.loops.sdk.api.ThemesApi
 import com.retro99.loops.sdk.api.TransactionalApi
 import com.retro99.loops.sdk.ksp.JvmAsync
@@ -77,7 +77,7 @@ class LoopsClient private constructor(
     val campaigns: CampaignsApi = CampaignsApi(http)
 
     /** Email Messages resource group. */
-    val messages: MessagesApi = MessagesApi(http)
+    val emailMessages: EmailMessagesApi = EmailMessagesApi(http)
 
     /** Themes resource group. */
     val themes: ThemesApi = ThemesApi(http)
@@ -85,8 +85,8 @@ class LoopsClient private constructor(
     /** Components resource group. */
     val components: ComponentsApi = ComponentsApi(http)
 
-    /** Dedicated Sending IP Pools resource group. */
-    val ipPools: IpPoolsApi = IpPoolsApi(http)
+    /** Dedicated Sending IPs resource group. */
+    val sendingIps: DedicatedSendingIpsApi = DedicatedSendingIpsApi(http)
 
     /**
      * Tests the API key (GET /api-key). Returns the team the key belongs to,
