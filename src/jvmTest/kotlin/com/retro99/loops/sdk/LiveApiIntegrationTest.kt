@@ -102,6 +102,31 @@ class LiveApiIntegrationTest {
                 // The added endpoint: GET /transactional-emails -> Page<TransactionalEmail>.
                 val page = client.transactional.listEmails(perPage = 10)
                 assertTrue(page.data.any { it.id == created.id }, "created email should appear in list")
+
+                // Phase 8 draft/publish lifecycle, all reusing the email created above so there is
+                // no extra resource to clean up (transactional emails have no delete endpoint).
+                // getEmail -> GET /transactional-emails/{id}.
+                val fetched = client.transactional.getEmail(created.id)
+                assertEquals(created.id, fetched.id)
+                assertEquals("sdk-it-renamed", fetched.name)
+
+                // ensureEmailDraft -> POST /transactional-emails/{id}/draft. Idempotent: returns the
+                // email with a draft message id populated.
+                val withDraft = client.transactional.ensureEmailDraft(created.id)
+                assertEquals(created.id, withDraft.id)
+                assertTrue(
+                    withDraft.draftEmailMessageId != null,
+                    "ensureEmailDraft should populate a draft email message id",
+                )
+
+                // publishEmail -> POST /transactional-emails/{id}/publish. Publishing the draft we
+                // just ensured should surface a published email message id.
+                val published = client.transactional.publishEmail(created.id)
+                assertEquals(created.id, published.id)
+                assertTrue(
+                    published.publishedEmailMessageId != null,
+                    "publishEmail should populate a published email message id",
+                )
             } finally {
                 client.close()
             }

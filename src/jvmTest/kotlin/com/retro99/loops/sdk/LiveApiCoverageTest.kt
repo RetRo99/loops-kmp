@@ -1,12 +1,15 @@
 package com.retro99.loops.sdk
 
+import com.retro99.loops.sdk.model.ContactIdentifier
 import com.retro99.loops.sdk.model.ContactPropertyType
+import com.retro99.loops.sdk.model.CreateContactRequest
 import com.retro99.loops.sdk.model.CreatePropertyRequest
 import com.retro99.loops.sdk.model.CreateUploadRequest
 import com.retro99.loops.sdk.model.EventRequest
 import com.retro99.loops.sdk.model.LoopsValue
 import com.retro99.loops.sdk.model.NameRequest
 import com.retro99.loops.sdk.model.TransactionalSendRequest
+import com.retro99.loops.sdk.model.UpdateEmailMessageRequest
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -102,6 +105,86 @@ class LiveApiCoverageTest {
         assertTrue(error.statusCode in 400..499)
     }
 
+    @Test
+    fun `email message get round trips from a campaign email message id`() = withClient {
+        // Email messages have no list endpoint; a real id is reachable from a campaign that has
+        // one. Find the first campaign exposing an emailMessageId and fetch it by id.
+        val emailMessageId = campaigns.list(perPage = 50)
+            .data
+            .firstNotNullOfOrNull { campaign -> campaign.emailMessageId }
+        if (emailMessageId == null) {
+            // Account has no campaign with an email message yet — nothing to exercise.
+            return@withClient
+        }
+        val message = emailMessages.get(emailMessageId)
+        assertEquals(emailMessageId, message.id)
+    }
+
+    @Test
+    fun `getting an email message with a bogus id maps to LoopsException Api`() = withClient {
+        val error = assertFailsWith<LoopsException.Api> {
+            emailMessages.get("sdk-it-does-not-exist")
+        }
+        assertTrue(error.statusCode in 400..499)
+    }
+
+    @Test
+    fun `email message update changes preview text then restores it`() = withClient {
+        // Mutating test (demo account only). Resolve a real email message via a campaign, flip its
+        // previewText, assert the change, then restore the original so the demo content is left
+        // untouched. expectedRevisionId is the optimistic-concurrency token from contentRevisionId.
+        val emailMessageId = campaigns.list(perPage = 50)
+            .data
+            .firstNotNullOfOrNull { campaign -> campaign.emailMessageId }
+        if (emailMessageId == null) {
+            // No campaign with an email message — nothing safe to mutate.
+            return@withClient
+        }
+
+        val original = emailMessages.get(emailMessageId)
+        val originalRevision = original.contentRevisionId
+        if (originalRevision == null) {
+            // Without a revision token we cannot satisfy expectedRevisionId — skip rather than 409.
+            return@withClient
+        }
+        val originalPreview = original.previewText
+
+        // update -> POST /email-messages/{id}. Only previewText is changed (a safe metadata field).
+        val updated = emailMessages.update(
+            emailMessageId,
+            UpdateEmailMessageRequest(
+                expectedRevisionId = originalRevision,
+                previewText = "sdk-it-preview-${System.currentTimeMillis()}",
+            ),
+        )
+        try {
+            assertEquals(emailMessageId, updated.id)
+            assertTrue(updated.previewText?.startsWith("sdk-it-preview-") == true)
+        } finally {
+            // Restore the original preview text using the new revision so the demo is left as-is.
+            updated.contentRevisionId?.let { newRevision ->
+                runCatching {
+                    emailMessages.update(
+                        emailMessageId,
+                        UpdateEmailMessageRequest(
+                            expectedRevisionId = newRevision,
+                            previewText = originalPreview,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `deprecated transactional list returns a Page envelope`() = withClient {
+        // The deprecated GET v1/transactional list (kept for loops-js parity). Still must decode
+        // into the Page<TransactionalEmailSummary> envelope.
+        @Suppress("DEPRECATION")
+        val page = transactional.list(perPage = 10)
+        assertNotNull(page.pagination)
+    }
+
     // endregion
 
     // region Events & transactional send (these trigger real workflow/email processing)
@@ -140,12 +223,17 @@ class LiveApiCoverageTest {
     // region Creates (persistent — sdk-it- prefixed)
 
     @Test
-    fun `campaign create then get round trips`() = withClient {
+    fun `campaign create get and update round trip`() = withClient {
         val created = campaigns.create(NameRequest("sdk-it-campaign-${System.currentTimeMillis()}"))
         val createdId = assertNotNull(created.id, "create should return an id")
         val fetched = campaigns.get(createdId)
         assertEquals(createdId, fetched.id)
         assertEquals(created.name, fetched.name)
+
+        // update -> POST /campaigns/{id}. Renaming returns the updated campaign.
+        val renamed = campaigns.update(createdId, NameRequest("sdk-it-campaign-renamed"))
+        assertEquals(createdId, renamed.id)
+        assertEquals("sdk-it-campaign-renamed", renamed.name)
     }
 
     @Test
@@ -159,6 +247,33 @@ class LiveApiCoverageTest {
         // It should now appear in the custom-property list with a string type.
         val listed = contactProperties.list(list = "custom")
         assertTrue(listed.any { it.key == name }, "created property should be listed")
+    }
+
+    // endregion
+
+    // region Suppression (Phase 1.5 / 1.6)
+
+    @Test
+    fun `suppression status and removal round trip for a fresh contact`() = withClient {
+        val email = "sdk-it-supp-${System.currentTimeMillis()}@example.com"
+        try {
+            contacts.create(CreateContactRequest(email = email))
+            val identifier = ContactIdentifier.ByEmail(email)
+
+            // suppressionStatus -> GET /contacts/suppression. A fresh contact is not suppressed,
+            // and the response carries the contact plus the removal quota.
+            val status = contacts.suppressionStatus(identifier)
+            assertEquals(email, status.contact.email)
+            assertEquals(false, status.isSuppressed)
+            assertTrue(status.removalQuota.limit >= 0)
+
+            // removeSuppression -> DELETE /contacts/suppression. The contact is not suppressed, so
+            // this is a no-op removal; it must still return a typed response (not throw).
+            val removal = contacts.removeSuppression(identifier)
+            assertTrue(removal.removalQuota.limit >= 0)
+        } finally {
+            runCatching { contacts.delete(ContactIdentifier.ByEmail(email)) }
+        }
     }
 
     // endregion
