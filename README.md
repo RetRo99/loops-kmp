@@ -27,13 +27,19 @@ Swift consumers via **Swift Package Manager**.
 
 - Two construction modes — **direct** (server-side) and **proxy** (mobile) — with the security
   boundary enforced at the type level.
+- **Automatic retry on HTTP 429**, configurable network **timeouts**, and opt-in request
+  **logging** — see [Resilience & configuration](#resilience--configuration).
 - All failures surface as a sealed `LoopsException`:
     - `LoopsException.Api(statusCode, body)` — the server returned a non-2xx response.
-    - `LoopsException.RateLimit(limit, remaining)` — HTTP 429, with the `x-ratelimit-*` headers parsed.
+    - `LoopsException.RateLimit(limit, remaining)` — HTTP 429, with the `x-ratelimit-*` headers
+      parsed. Thrown only after retries are exhausted (see [Resilience & configuration](#resilience--configuration)).
     - `LoopsException.Network(cause)` — no response (offline, timeout, DNS). Usually retryable.
     - `LoopsException.Serialization(cause)` — a 2xx body that didn't match the expected model.
 
 > No third-party (Ktor, kotlinx.serialization) exceptions are exposed to consumers.
+>
+> Swift consumers using an exhaustive `switch onEnum(of: error)` must handle all four cases;
+> adding `.rateLimit` is a source-breaking change for switches written against earlier versions.
 
 ---
 
@@ -77,7 +83,7 @@ Module `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("io.github.retro99:loops-kmp:0.1.1")
+    implementation("io.github.retro99:loops-kmp:0.1.3")
 }
 ```
 
@@ -171,8 +177,42 @@ println(asset.finalUrl)
 ```
 
 > **JVM (Java) callers:** every suspend method has a generated `*Async()` twin returning a
-> `CompletableFuture` (e.g. `client.contacts.createAsync(...)`).
+> `CompletableFuture` (e.g. `client.contacts.createAsync(...)`). *(JVM target only.)*
 > **Swift callers:** call the same methods with `try await` thanks to SKIE.
+
+### Resilience & configuration
+
+`direct` and `proxy` accept three optional configuration objects. Each has a sensible default,
+so you only pass what you want to change.
+
+| Config | Default | What it does |
+|---|---|---|
+| `RetryConfig` | `RetryConfig.DEFAULT` (3 retries, 500 ms → 10 s backoff) | Retries HTTP 429 with exponential backoff, honouring a `Retry-After` header. `RetryConfig.NONE` disables it. |
+| `TimeoutConfig` | `TimeoutConfig.NONE` (engine defaults) | Request / connect / socket timeouts. `TimeoutConfig.DEFAULT` applies 30 s / 10 s / 30 s. |
+| `LoggingConfig` | `LoggingConfig.none()` (off) | Request/response logging at a chosen `LogLevel`. Off by default because header/body logs can leak the API key and PII; on the JVM it bridges to SLF4J. |
+
+```kotlin
+val client = LoopsClient.direct(
+    apiKey = "YOUR_API_KEY",
+    baseUrl = LoopsClient.LOOPS_BASE_URL,
+    retry = RetryConfig(maxRetries = 5),
+    timeout = TimeoutConfig.DEFAULT,
+    logging = LoggingConfig.of(LogLevel.INFO),
+)
+```
+
+Swift sees the same factory (Kotlin default arguments don't cross the Swift boundary, so an
+engine-free overload is provided):
+
+```swift
+let client = LoopsClient.companion.direct(
+    apiKey: "YOUR_API_KEY",
+    baseUrl: LoopsClient.companion.LOOPS_BASE_URL,
+    retry: RetryConfig.companion.DEFAULT,
+    timeout: TimeoutConfig.companion.DEFAULT,
+    logging: LoggingConfig.companion.of(level: .info, logger: nil)
+)
+```
 
 ### Mobile (`proxy` mode)
 
