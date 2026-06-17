@@ -2,6 +2,7 @@ package com.retro99.loops.sdk
 
 import com.retro99.loops.sdk.model.Attachment
 import com.retro99.loops.sdk.model.LoopsValue
+import com.retro99.loops.sdk.model.NameRequest
 import com.retro99.loops.sdk.model.TransactionalSendRequest
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -152,4 +153,110 @@ class TransactionalApiTest {
             )
         }
     }
+
+    // region Transactional email management (Phase 8)
+
+    private val transactionalEmailBody = """{"id":"te-1","name":"Welcome","draftEmailMessageId":"em-draft","draftEmailMessageContentRevisionId":"rev-1","publishedEmailMessageId":null,"createdAt":"2024-01-01T00:00:00Z","updatedAt":"2024-01-02T00:00:00Z","dataVariables":["firstName","lastName"]}"""
+
+    @Test
+    fun `createEmail - sends POST with name and parses TransactionalEmail`() = runTest {
+        var seenMethod: HttpMethod? = null
+        var seenPath: String? = null
+        var seenBody: String? = null
+        val engine = MockEngine { request ->
+            seenMethod = request.method
+            seenPath = request.url.encodedPath
+            seenBody = (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()
+            respond(content = transactionalEmailBody, status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+        val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
+        val result = classUnderTest.transactional.createEmail(NameRequest("Welcome"))
+        assertEquals(HttpMethod.Post, seenMethod)
+        assertEquals("/api/v1/transactional-emails", seenPath)
+        assertEquals("""{"name":"Welcome"}""", seenBody)
+        assertEquals("te-1", result.id)
+        assertEquals("Welcome", result.name)
+        assertEquals("em-draft", result.draftEmailMessageId)
+        assertEquals(null, result.publishedEmailMessageId)
+        assertEquals(listOf("firstName", "lastName"), result.dataVariables)
+    }
+
+    @Test
+    fun `getEmail - sends GET with path id`() = runTest {
+        var seenMethod: HttpMethod? = null
+        var seenPath: String? = null
+        val engine = MockEngine { request ->
+            seenMethod = request.method
+            seenPath = request.url.encodedPath
+            respond(content = transactionalEmailBody, status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+        val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
+        val result = classUnderTest.transactional.getEmail("te-1")
+        assertEquals(HttpMethod.Get, seenMethod)
+        assertEquals("/api/v1/transactional-emails/te-1", seenPath)
+        assertEquals("te-1", result.id)
+    }
+
+    @Test
+    fun `updateEmail - sends PATCH to path with name`() = runTest {
+        var seenMethod: HttpMethod? = null
+        var seenPath: String? = null
+        var seenBody: String? = null
+        val engine = MockEngine { request ->
+            seenMethod = request.method
+            seenPath = request.url.encodedPath
+            seenBody = (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()
+            respond(content = transactionalEmailBody, status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+        val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
+        val result = classUnderTest.transactional.updateEmail("te-1", NameRequest("Renamed"))
+        assertEquals(HttpMethod.Patch, seenMethod)
+        assertEquals("/api/v1/transactional-emails/te-1", seenPath)
+        assertEquals("""{"name":"Renamed"}""", seenBody)
+        assertEquals("te-1", result.id)
+    }
+
+    @Test
+    fun `ensureEmailDraft - sends POST to draft path with no body`() = runTest {
+        var seenMethod: HttpMethod? = null
+        var seenPath: String? = null
+        val engine = MockEngine { request ->
+            seenMethod = request.method
+            seenPath = request.url.encodedPath
+            respond(content = transactionalEmailBody, status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+        val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
+        val result = classUnderTest.transactional.ensureEmailDraft("te-1")
+        assertEquals(HttpMethod.Post, seenMethod)
+        assertEquals("/api/v1/transactional-emails/te-1/draft", seenPath)
+        assertEquals("em-draft", result.draftEmailMessageId)
+    }
+
+    @Test
+    fun `publishEmail - sends POST to publish path with no body`() = runTest {
+        var seenMethod: HttpMethod? = null
+        var seenPath: String? = null
+        val engine = MockEngine { request ->
+            seenMethod = request.method
+            seenPath = request.url.encodedPath
+            respond(content = transactionalEmailBody, status = HttpStatusCode.OK, headers = jsonHeaders)
+        }
+        val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
+        val result = classUnderTest.transactional.publishEmail("te-1")
+        assertEquals(HttpMethod.Post, seenMethod)
+        assertEquals("/api/v1/transactional-emails/te-1/publish", seenPath)
+        assertEquals("te-1", result.id)
+    }
+
+    @Test
+    fun `getEmail - non-2xx throws LoopsException Api`() = runTest {
+        val engine = MockEngine {
+            respond(content = """{"message":"Not found"}""", status = HttpStatusCode.NotFound, headers = jsonHeaders)
+        }
+        val classUnderTest = LoopsClient.direct(apiKey = "k", baseUrl = LoopsClient.LOOPS_BASE_URL, engine = engine)
+        val error = assertFailsWith<LoopsException.Api> { classUnderTest.transactional.getEmail("missing") }
+        assertEquals(404, error.statusCode)
+    }
+
+    // endregion
 }
