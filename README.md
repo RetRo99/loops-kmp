@@ -1,12 +1,12 @@
 # loops-kmp
 
 A Kotlin Multiplatform client for the [loops.so](https://loops.so) API.
-Targets **Android** and **iOS**, distributable to Kotlin consumers via **Maven Central** and to
-Swift consumers via **Swift Package Manager**.
+Targets **Android**, **JVM** (server-side), and **iOS** — distributable to Kotlin/Java consumers
+via **Maven Central** and to Swift consumers via **Swift Package Manager**.
 
 ## Features
 
-- `LoopsClient` built on Ktor (OkHttp on Android, NSURLSession/Darwin on iOS).
+- `LoopsClient` built on Ktor (OkHttp on Android, CIO on JVM, NSURLSession/Darwin on iOS).
 - **Full coverage of the Loops API**, organized into resource groups on the client. Suspend API
   on Kotlin; `CompletableFuture` wrappers on JVM; `async`/`await` on Swift via SKIE.
 - `testApiKey()` lives directly on the client (`GET /api-key`); everything else is grouped:
