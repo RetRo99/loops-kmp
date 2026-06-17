@@ -80,7 +80,7 @@ Module `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("io.github.retro99:loops-kmp:0.1.3")
+    implementation("io.github.retro99:loops-kmp:1.0.0")
 }
 ```
 

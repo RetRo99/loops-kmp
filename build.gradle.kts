@@ -12,7 +12,7 @@ plugins {
 }
 
 group = "io.github.retro99"
-version = "0.1.3"
+version = "1.0.0"
 
 kotlin {
     android {
