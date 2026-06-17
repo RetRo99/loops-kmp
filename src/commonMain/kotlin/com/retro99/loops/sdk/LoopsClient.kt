@@ -56,7 +56,7 @@ class LoopsClient private constructor(
 
     // Internal (not private) so the KSP-generated `LoopsClientAsync` wrappers, which live in
     // this package as top-level extensions, can reach `http.asyncScope`.
-    internal val http = LoopsHttp(client)
+    internal val http = LoopsHttp(client, config.retry)
 
     // region Resources
     /** Contacts resource group. */
@@ -116,17 +116,32 @@ class LoopsClient private constructor(
          *
          * @param apiKey Your Loops account API key.
          * @param baseUrl Override only for Loops staging or EU data-residency endpoints.
+         * @param retry How HTTP 429 responses are retried. Defaults to [RetryConfig.DEFAULT];
+         *   pass [RetryConfig.NONE] to disable retrying.
          */
         fun direct(apiKey: String): LoopsClient = direct(apiKey, LOOPS_BASE_URL)
 
         fun direct(apiKey: String, baseUrl: String): LoopsClient =
-            direct(apiKey, baseUrl, httpClientEngine())
+            direct(apiKey, baseUrl, RetryConfig.DEFAULT)
+
+        fun direct(
+            apiKey: String,
+            baseUrl: String,
+            retry: RetryConfig,
+        ): LoopsClient = direct(apiKey, baseUrl, retry, httpClientEngine())
 
         fun direct(
             apiKey: String,
             baseUrl: String,
             engine: HttpClientEngine,
-        ): LoopsClient = LoopsClient(LoopsConfig.Direct(apiKey, baseUrl), engine)
+        ): LoopsClient = direct(apiKey, baseUrl, RetryConfig.DEFAULT, engine)
+
+        fun direct(
+            apiKey: String,
+            baseUrl: String,
+            retry: RetryConfig,
+            engine: HttpClientEngine,
+        ): LoopsClient = LoopsClient(LoopsConfig.Direct(apiKey, baseUrl, retry), engine)
         // endregion
 
         // region Proxy (untrusted) factories
@@ -137,17 +152,32 @@ class LoopsClient private constructor(
          * @param proxyUrl Base URL of your backend proxy (e.g. `"https://your-api.com/loops/"`).
          * @param auth How to authenticate the app to your proxy. The single-argument
          *   overload uses [ProxyAuth.None].
+         * @param retry How HTTP 429 responses are retried. Defaults to [RetryConfig.DEFAULT];
+         *   pass [RetryConfig.NONE] to disable retrying.
          */
         fun proxy(proxyUrl: String): LoopsClient = proxy(proxyUrl, ProxyAuth.None)
 
         fun proxy(proxyUrl: String, auth: ProxyAuth): LoopsClient =
-            proxy(proxyUrl, auth, httpClientEngine())
+            proxy(proxyUrl, auth, RetryConfig.DEFAULT)
+
+        fun proxy(
+            proxyUrl: String,
+            auth: ProxyAuth,
+            retry: RetryConfig,
+        ): LoopsClient = proxy(proxyUrl, auth, retry, httpClientEngine())
 
         fun proxy(
             proxyUrl: String,
             auth: ProxyAuth,
             engine: HttpClientEngine,
-        ): LoopsClient = LoopsClient(LoopsConfig.Proxy(proxyUrl, auth), engine)
+        ): LoopsClient = proxy(proxyUrl, auth, RetryConfig.DEFAULT, engine)
+
+        fun proxy(
+            proxyUrl: String,
+            auth: ProxyAuth,
+            retry: RetryConfig,
+            engine: HttpClientEngine,
+        ): LoopsClient = LoopsClient(LoopsConfig.Proxy(proxyUrl, auth, retry), engine)
         // endregion
     }
 }
