@@ -1,7 +1,7 @@
 # loops-kmp
 
 A Kotlin Multiplatform client for the [loops.so](https://loops.so) API.
-Targets **Android**, **JVM** (server-side), and **iOS** — distributable to Kotlin/Java consumers
+Targets **Android**, **JVM** (server-side), and **iOS** (arm64 device + Apple Silicon simulator) — distributable to Kotlin/Java consumers
 via **Maven Central** and to Swift consumers via **Swift Package Manager**.
 
 ## Features
@@ -80,7 +80,7 @@ Module `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("io.github.retro99:loops-kmp:1.0.0")
+    implementation("org.retar:loops-kmp:1.0.0")
 }
 ```
 
