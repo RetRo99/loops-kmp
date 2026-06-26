@@ -11,7 +11,7 @@ plugins {
     alias(libs.plugins.skie)
 }
 
-group = "io.github.retro99"
+group = "org.retar"
 version = "1.0.0"
 
 kotlin {
